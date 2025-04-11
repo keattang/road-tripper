@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useCallback, useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { Trip, Location, DrivingRoute } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
@@ -201,9 +201,9 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     // Skip if we're already calculating
     if (isCalculatingRef.current) return;
     
-    // Skip if locations haven't changed since last calculation
+    // Skip if locations haven't changed since last calculation AND routes exist
     const locationsString = JSON.stringify(trip.locations);
-    if (locationsString === lastCalculatedLocationsRef.current) return;
+    if (locationsString === lastCalculatedLocationsRef.current && trip.routes && trip.routes.length > 0) return;
     
     // Set calculating flag
     isCalculatingRef.current = true;
@@ -267,7 +267,14 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     } finally {
       isCalculatingRef.current = false;
     }
-  }, [trip.locations, calculateRoute, directionsService, onRoutesUpdate]);
+  }, [trip.locations, trip.routes, calculateRoute, directionsService, onRoutesUpdate]);
+
+  // Add an effect to recalculate routes when they're cleared
+  useEffect(() => {
+    if (mapInitialized && (!trip.routes || trip.routes.length === 0)) {
+      calculateAllRoutes();
+    }
+  }, [trip.routes, mapInitialized, calculateAllRoutes]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;

@@ -64,6 +64,7 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       ...trip,
       locations: locationsWithNights,
       totalDays,
+      routes: [], // Clear routes to force recalculation
     });
   };
 
