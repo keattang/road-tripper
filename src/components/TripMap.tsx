@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useCallback, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { Trip, Location, DrivingRoute } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
@@ -30,6 +30,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [placeDetails, setPlaceDetails] = useState<google.maps.places.PlaceResult | null>(null);
+  const [mapInitialized, setMapInitialized] = useState(false);
 
   // Add a ref to track if we're currently calculating routes
   const isCalculatingRef = useRef<boolean>(false);
@@ -268,46 +269,29 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     }
   }, [trip.locations, calculateRoute, directionsService, onRoutesUpdate]);
 
-  // Add a useEffect for initial map setup
-  useEffect(() => {
-    if (isLoaded && mapRef.current) {
-      // Initialize services if not already done
+  const onLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    
+    // Initialize services
+    if (isLoaded) {
       if (!directionsService) {
         setDirectionsService(new google.maps.DirectionsService());
       }
       if (!placesService) {
-        setPlacesService(new google.maps.places.PlacesService(mapRef.current));
+        setPlacesService(new google.maps.places.PlacesService(map));
       }
 
-      // Calculate routes and fit map bounds
-      calculateAllRoutes();
-      fitMapToLocations();
+      // Set map as initialized after a short delay
+      setTimeout(() => {
+        setMapInitialized(true);
+        // Calculate routes and fit map bounds after a short delay
+        setTimeout(() => {
+          calculateAllRoutes();
+          fitMapToLocations();
+        }, 500);
+      }, 100);
     }
-  }, [isLoaded, mapRef.current, directionsService, placesService, calculateAllRoutes, fitMapToLocations]);
-
-  // Update the route calculation useEffect to be more robust
-  useEffect(() => {
-    if (!isLoaded || !directionsService || trip.locations.length < 2) return;
-
-    // Use a small delay to ensure the map is fully loaded
-    const timeoutId = setTimeout(() => {
-      calculateAllRoutes();
-    }, 1000);
-    
-    return () => clearTimeout(timeoutId);
-  }, [isLoaded, directionsService, trip.locations, calculateAllRoutes]);
-
-  // Update the map bounds effect to be more robust
-  useEffect(() => {
-    if (!isLoaded || !mapRef.current) return;
-
-    // Use a small delay to ensure the map is fully loaded
-    const timeoutId = setTimeout(() => {
-      fitMapToLocations();
-    }, 1000);
-    
-    return () => clearTimeout(timeoutId);
-  }, [isLoaded, mapRef.current, trip.locations, trip.pointsOfInterest, fitMapToLocations]);
+  }, [isLoaded, directionsService, placesService, calculateAllRoutes, fitMapToLocations]);
 
   // Add a function to manually trigger route calculation
   const recalculateRoutes = useCallback(() => {
@@ -316,17 +300,9 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     calculateAllRoutes();
   }, [calculateAllRoutes]);
 
-  const onLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    
-    // Initialize Places service after map is loaded
-    if (isLoaded && !placesService) {
-      setPlacesService(new google.maps.places.PlacesService(map));
-    }
-  }, [isLoaded, placesService]);
-
   const onUnmount = useCallback(() => {
     mapRef.current = null;
+    setMapInitialized(false);
   }, []);
 
   const handleMarkerClick = useCallback((location: Location) => {
@@ -389,7 +365,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       onLoad={onLoad}
       onUnmount={onUnmount}
     >
-      {trip.locations.map((location) => (
+      {mapInitialized && trip.locations.map((location) => (
         <Marker
           key={location.id}
           position={{
@@ -404,7 +380,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         />
       ))}
 
-      {trip.pointsOfInterest.map((poi) => (
+      {mapInitialized && trip.pointsOfInterest.map((poi) => (
         <Marker
           key={poi.id}
           position={{
@@ -418,7 +394,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         />
       ))}
 
-      {routes.map((route, index) => (
+      {mapInitialized && routes.map((route, index) => (
         <Polyline
           key={index}
           path={route.polyline}
@@ -430,7 +406,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         />
       ))}
 
-      {selectedLocation && (
+      {mapInitialized && selectedLocation && (
         <InfoWindow
           position={{
             lat: selectedLocation.coordinates.lat,
