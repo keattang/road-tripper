@@ -39,6 +39,104 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
 
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS);
 
+  const fitMapToLocations = useCallback(() => {
+    if (!mapRef.current || trip.locations.length === 0) return;
+
+    try {
+      const bounds = new google.maps.LatLngBounds();
+      let hasValidCoordinates = false;
+      
+      // Add all locations to bounds
+      trip.locations.forEach(location => {
+        if (location.coordinates.lat !== 0 && location.coordinates.lng !== 0) {
+          try {
+            // Validate coordinates are within valid range
+            if (
+              location.coordinates.lat >= -90 && 
+              location.coordinates.lat <= 90 && 
+              location.coordinates.lng >= -180 && 
+              location.coordinates.lng <= 180
+            ) {
+              bounds.extend({
+                lat: location.coordinates.lat,
+                lng: location.coordinates.lng
+              });
+              hasValidCoordinates = true;
+            } else {
+              console.warn('Coordinates out of valid range for location:', location.name);
+            }
+          } catch {
+            console.warn('Invalid coordinates for location:', location.name);
+          }
+        }
+      });
+      
+      // Add all points of interest to bounds
+      trip.pointsOfInterest.forEach(poi => {
+        if (poi.coordinates.lat !== 0 && poi.coordinates.lng !== 0) {
+          try {
+            // Validate coordinates are within valid range
+            if (
+              poi.coordinates.lat >= -90 && 
+              poi.coordinates.lat <= 90 && 
+              poi.coordinates.lng >= -180 && 
+              poi.coordinates.lng <= 180
+            ) {
+              bounds.extend({
+                lat: poi.coordinates.lat,
+                lng: poi.coordinates.lng
+              });
+            } else {
+              console.warn('Coordinates out of valid range for POI:', poi.name);
+            }
+          } catch {
+            console.warn('Invalid coordinates for POI:', poi.name);
+          }
+        }
+      });
+      
+      // Only fit bounds if we have valid coordinates
+      if (hasValidCoordinates) {
+        // Check if bounds are valid before fitting
+        if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat() || 
+            bounds.getNorthEast().lng() !== bounds.getSouthWest().lng()) {
+          mapRef.current.fitBounds(bounds);
+          
+          // Add some padding to the bounds
+          const listener = google.maps.event.addListenerOnce(mapRef.current, 'bounds_changed', () => {
+            if (mapRef.current) {
+              const currentZoom = mapRef.current.getZoom();
+              if (currentZoom && currentZoom > 15) {
+                mapRef.current.setZoom(15);
+              }
+            }
+            google.maps.event.removeListener(listener);
+          });
+        } else {
+          // If bounds are invalid (same point), just center on the first valid location
+          const firstValidLocation = trip.locations.find(loc => 
+            loc.coordinates.lat !== 0 && 
+            loc.coordinates.lng !== 0 &&
+            loc.coordinates.lat >= -90 && 
+            loc.coordinates.lat <= 90 && 
+            loc.coordinates.lng >= -180 && 
+            loc.coordinates.lng <= 180
+          );
+          
+          if (firstValidLocation) {
+            mapRef.current.setCenter({
+              lat: firstValidLocation.coordinates.lat,
+              lng: firstValidLocation.coordinates.lng
+            });
+            mapRef.current.setZoom(12);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fitting map bounds:', error);
+    }
+  }, [trip.locations, trip.pointsOfInterest]);
+
   const calculateRoute = useCallback(async (origin: Location, destination: Location) => {
     if (!directionsService) return null;
 
@@ -170,16 +268,46 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     }
   }, [trip.locations, calculateRoute, directionsService, onRoutesUpdate]);
 
-  // Replace the route calculation useEffect with a simpler version that just calls the function
+  // Add a useEffect for initial map setup
   useEffect(() => {
-    // Use a small delay to prevent rapid recalculations
+    if (isLoaded && mapRef.current) {
+      // Initialize services if not already done
+      if (!directionsService) {
+        setDirectionsService(new google.maps.DirectionsService());
+      }
+      if (!placesService) {
+        setPlacesService(new google.maps.places.PlacesService(mapRef.current));
+      }
+
+      // Calculate routes and fit map bounds
+      calculateAllRoutes();
+      fitMapToLocations();
+    }
+  }, [isLoaded, mapRef.current, directionsService, placesService, calculateAllRoutes, fitMapToLocations]);
+
+  // Update the route calculation useEffect to be more robust
+  useEffect(() => {
+    if (!isLoaded || !directionsService || trip.locations.length < 2) return;
+
+    // Use a small delay to ensure the map is fully loaded
     const timeoutId = setTimeout(() => {
       calculateAllRoutes();
-    }, 500);
+    }, 1000);
     
-    // Clean up the timeout if the component unmounts or dependencies change
     return () => clearTimeout(timeoutId);
-  }, [calculateAllRoutes]);
+  }, [isLoaded, directionsService, trip.locations, calculateAllRoutes]);
+
+  // Update the map bounds effect to be more robust
+  useEffect(() => {
+    if (!isLoaded || !mapRef.current) return;
+
+    // Use a small delay to ensure the map is fully loaded
+    const timeoutId = setTimeout(() => {
+      fitMapToLocations();
+    }, 1000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isLoaded, mapRef.current, trip.locations, trip.pointsOfInterest, fitMapToLocations]);
 
   // Add a function to manually trigger route calculation
   const recalculateRoutes = useCallback(() => {
@@ -200,111 +328,6 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const onUnmount = useCallback(() => {
     mapRef.current = null;
   }, []);
-
-  // Remove the separate useEffect for Places service initialization
-  useEffect(() => {
-    if (isLoaded && !directionsService) {
-      setDirectionsService(new google.maps.DirectionsService());
-    }
-  }, [isLoaded, directionsService]);
-
-  const fitMapToLocations = useCallback(() => {
-    if (!mapRef.current || trip.locations.length === 0) return;
-
-    try {
-      const bounds = new google.maps.LatLngBounds();
-      let hasValidCoordinates = false;
-      
-      // Add all locations to bounds
-      trip.locations.forEach(location => {
-        if (location.coordinates.lat !== 0 && location.coordinates.lng !== 0) {
-          try {
-            // Validate coordinates are within valid range
-            if (
-              location.coordinates.lat >= -90 && 
-              location.coordinates.lat <= 90 && 
-              location.coordinates.lng >= -180 && 
-              location.coordinates.lng <= 180
-            ) {
-              bounds.extend({
-                lat: location.coordinates.lat,
-                lng: location.coordinates.lng
-              });
-              hasValidCoordinates = true;
-            } else {
-              console.warn('Coordinates out of valid range for location:', location.name);
-            }
-          } catch {
-            console.warn('Invalid coordinates for location:', location.name);
-          }
-        }
-      });
-      
-      // Add all points of interest to bounds
-      trip.pointsOfInterest.forEach(poi => {
-        if (poi.coordinates.lat !== 0 && poi.coordinates.lng !== 0) {
-          try {
-            // Validate coordinates are within valid range
-            if (
-              poi.coordinates.lat >= -90 && 
-              poi.coordinates.lat <= 90 && 
-              poi.coordinates.lng >= -180 && 
-              poi.coordinates.lng <= 180
-            ) {
-              bounds.extend({
-                lat: poi.coordinates.lat,
-                lng: poi.coordinates.lng
-              });
-            } else {
-              console.warn('Coordinates out of valid range for POI:', poi.name);
-            }
-          } catch {
-            console.warn('Invalid coordinates for POI:', poi.name);
-          }
-        }
-      });
-      
-      // Only fit bounds if we have valid coordinates
-      if (hasValidCoordinates) {
-        // Check if bounds are valid before fitting
-        if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat() || 
-            bounds.getNorthEast().lng() !== bounds.getSouthWest().lng()) {
-          mapRef.current.fitBounds(bounds);
-          
-          // Add some padding to the bounds
-          const listener = google.maps.event.addListenerOnce(mapRef.current, 'bounds_changed', () => {
-            if (mapRef.current) {
-              const currentZoom = mapRef.current.getZoom();
-              if (currentZoom && currentZoom > 15) {
-                mapRef.current.setZoom(15);
-              }
-            }
-            google.maps.event.removeListener(listener);
-          });
-        } else {
-          // If bounds are invalid (same point), just center on the first valid location
-          const firstValidLocation = trip.locations.find(loc => 
-            loc.coordinates.lat !== 0 && 
-            loc.coordinates.lng !== 0 &&
-            loc.coordinates.lat >= -90 && 
-            loc.coordinates.lat <= 90 && 
-            loc.coordinates.lng >= -180 && 
-            loc.coordinates.lng <= 180
-          );
-          
-          if (firstValidLocation) {
-            mapRef.current.setCenter({
-              lat: firstValidLocation.coordinates.lat,
-              lng: firstValidLocation.coordinates.lng
-            });
-            mapRef.current.setZoom(12);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fitting map bounds:', error);
-    }
-  }, [trip.locations, trip.pointsOfInterest]);
 
   const handleMarkerClick = useCallback((location: Location) => {
     setSelectedLocation(location);
@@ -353,13 +376,6 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     fitMapToLocations,
     recalculateRoutes
   }), [fitMapToLocations, recalculateRoutes]);
-
-  // Fit map to locations when they change
-  useEffect(() => {
-    if (isLoaded && mapRef.current) {
-      fitMapToLocations();
-    }
-  }, [isLoaded, trip.locations, trip.pointsOfInterest, fitMapToLocations]);
 
   if (!isLoaded) {
     return <div>Loading maps...</div>;
