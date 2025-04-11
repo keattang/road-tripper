@@ -10,10 +10,9 @@ import {
   Box,
   List,
   ListItem,
-  ListItemText,
   Button,
 } from '@mui/material';
-import { ExpandMore, ExpandLess, Add } from '@mui/icons-material';
+import { ExpandMore, ExpandLess, Add, Delete } from '@mui/icons-material';
 import { Location, PointOfInterest } from '../types';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -29,9 +28,12 @@ interface LocationCardProps {
 
 const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: LocationCardProps) => {
   const [expanded, setExpanded] = useState(false);
-  const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>([]);
+  const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>(location.pointsOfInterest || []);
+  const [locationInputValue, setLocationInputValue] = useState(location.name);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const autocompleteRef = useRef<HTMLInputElement>(null);
+  const poiAutocompleteRefs = useRef<{ [key: string]: google.maps.places.Autocomplete }>({});
+  const poiInputRefs = useRef<{ [key: string]: HTMLInputElement }>({});
   
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS);
 
@@ -39,7 +41,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
     if (isLoaded && autocompleteRef.current && !autocomplete) {
       const options = {
         componentRestrictions: { country: "au" },
-        fields: ["address_components", "geometry", "name"],
+        fields: ["address_components", "geometry", "name", "formatted_address"],
         types: ["establishment", "geocode"],
       };
       
@@ -51,7 +53,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
       autocompleteInstance.addListener("place_changed", () => {
         const place = autocompleteInstance.getPlace();
         
-        if (place.geometry && place.geometry.location) {
+        if (place.geometry?.location) {
           const newLocation: Location = {
             ...location,
             name: place.name || place.formatted_address || "",
@@ -61,11 +63,10 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
             },
           };
           
+          setLocationInputValue(newLocation.name);
           onLocationChange(newLocation);
           
-          // Only notify parent to update map bounds if the API is loaded
           if (onMapBoundsUpdate && isLoaded) {
-            // Add a small delay to ensure the map is ready
             setTimeout(() => {
               onMapBoundsUpdate();
             }, 100);
@@ -77,6 +78,68 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
     }
   }, [isLoaded, autocomplete, location, onLocationChange, onMapBoundsUpdate]);
 
+  // Initialize POI autocomplete instances
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    pointsOfInterest.forEach((poi) => {
+      const inputRef = poiInputRefs.current[poi.id];
+      if (inputRef && !poiAutocompleteRefs.current[poi.id]) {
+        const options = {
+          componentRestrictions: { country: "au" },
+          fields: ["address_components", "geometry", "name"],
+          types: ["establishment", "geocode"],
+        };
+
+        const autocompleteInstance = new google.maps.places.Autocomplete(
+          inputRef,
+          options
+        );
+
+        autocompleteInstance.addListener("place_changed", () => {
+          const place = autocompleteInstance.getPlace();
+          
+          if (place.geometry?.location) {
+            const updatedPOIs = pointsOfInterest.map((p) =>
+              p.id === poi.id
+                ? {
+                    ...p,
+                    name: place.name || place.formatted_address || "",
+                    coordinates: {
+                      lat: place.geometry.location.lat(),
+                      lng: place.geometry.location.lng(),
+                    },
+                  }
+                : p
+            );
+            
+            setPointsOfInterest(updatedPOIs);
+            onLocationChange({
+              ...location,
+              pointsOfInterest: updatedPOIs,
+            });
+
+            if (onMapBoundsUpdate) {
+              setTimeout(() => {
+                onMapBoundsUpdate();
+              }, 100);
+            }
+          }
+        });
+
+        poiAutocompleteRefs.current[poi.id] = autocompleteInstance;
+      }
+    });
+
+    // Cleanup old autocomplete instances
+    Object.keys(poiAutocompleteRefs.current).forEach((poiId) => {
+      if (!pointsOfInterest.find((p) => p.id === poiId)) {
+        delete poiAutocompleteRefs.current[poiId];
+        delete poiInputRefs.current[poiId];
+      }
+    });
+  }, [isLoaded, pointsOfInterest, location, onLocationChange, onMapBoundsUpdate]);
+
   const handleDateChange = (date: Date | null) => {
     if (date) {
       onLocationChange({
@@ -86,13 +149,6 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
     }
   };
 
-  const handleLocationNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onLocationChange({
-      ...location,
-      name: event.target.value,
-    });
-  };
-
   const handleAddPointOfInterest = () => {
     const newPOI: PointOfInterest = {
       id: Date.now().toString(),
@@ -100,7 +156,30 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
       coordinates: { lat: 0, lng: 0 },
       locationId: location.id,
     };
-    setPointsOfInterest([...pointsOfInterest, newPOI]);
+    const updatedPOIs = [...pointsOfInterest, newPOI];
+    setPointsOfInterest(updatedPOIs);
+    onLocationChange({
+      ...location,
+      pointsOfInterest: updatedPOIs,
+    });
+  };
+
+  const handleRemovePointOfInterest = (poiId: string) => {
+    const updatedPOIs = pointsOfInterest.filter((p) => p.id !== poiId);
+    setPointsOfInterest(updatedPOIs);
+    onLocationChange({
+      ...location,
+      pointsOfInterest: updatedPOIs,
+    });
+    if (onMapBoundsUpdate) {
+      setTimeout(() => {
+        onMapBoundsUpdate();
+      }, 100);
+    }
+  };
+
+  const handleLocationInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationInputValue(event.target.value);
   };
 
   return (
@@ -110,8 +189,8 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
           inputRef={autocompleteRef}
           fullWidth
           label="Location Name"
-          value={location.name}
-          onChange={handleLocationNameChange}
+          value={locationInputValue}
+          onChange={handleLocationInputChange}
           sx={{ mb: 2 }}
           placeholder="Search for a location..."
         />
@@ -141,10 +220,23 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
           <List>
             {pointsOfInterest.map((poi) => (
               <ListItem key={poi.id}>
-                <ListItemText
-                  primary={poi.name}
-                  secondary={poi.drivingTimeFromLocation}
+                <TextField
+                  inputRef={(el) => {
+                    if (el) poiInputRefs.current[poi.id] = el;
+                  }}
+                  fullWidth
+                  label="Point of Interest"
+                  value={poi.name}
+                  placeholder="Search for a point of interest..."
+                  sx={{ mr: 1 }}
                 />
+                <IconButton
+                  edge="end"
+                  aria-label="delete"
+                  onClick={() => handleRemovePointOfInterest(poi.id)}
+                >
+                  <Delete />
+                </IconButton>
               </ListItem>
             ))}
           </List>
