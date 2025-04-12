@@ -63,14 +63,28 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
 
     // Collect all points of interest from all locations
     const allPointsOfInterest: PointOfInterest[] = [];
-    locationsWithNights.forEach(location => {
-      location.pointsOfInterest.forEach(poi => {
-        // Add locationId to each POI if not already set
+    
+    // First, add POIs from the updated location to preserve their order
+    if (updatedLocation.pointsOfInterest && updatedLocation.pointsOfInterest.length > 0) {
+      updatedLocation.pointsOfInterest.forEach(poi => {
         if (!poi.locationId) {
-          poi.locationId = location.id;
+          poi.locationId = updatedLocation.id;
         }
         allPointsOfInterest.push(poi);
       });
+    }
+    
+    // Then add POIs from other locations
+    locationsWithNights.forEach(location => {
+      if (location.id !== updatedLocation.id) {
+        location.pointsOfInterest.forEach(poi => {
+          // Add locationId to each POI if not already set
+          if (!poi.locationId) {
+            poi.locationId = location.id;
+          }
+          allPointsOfInterest.push(poi);
+        });
+      }
     });
 
     onTripChange({
