@@ -411,6 +411,20 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     setTempRoute(null);
   }, []);
 
+  // Add keyboard event handler for Escape key
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && (selectedLocation || selectedPoi)) {
+        handleInfoWindowClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedLocation, selectedPoi, handleInfoWindowClose]);
+
   // Expose the fitMapToLocations and recalculateRoutes functions via ref
   useImperativeHandle(ref, () => ({
     fitMapToLocations,
