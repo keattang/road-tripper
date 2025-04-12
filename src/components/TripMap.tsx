@@ -529,6 +529,21 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                     />
                   </Box>
                 )}
+                {/* Add driving time from previous location */}
+                {trip.routes && trip.routes.length > 0 && (
+                  <>
+                    {trip.routes.map((route, index) => {
+                      if (route.destination.id === selectedLocation.id) {
+                        return (
+                          <Typography key={`driving-time-${index}`} variant="body2" sx={{ mb: 1 }}>
+                            <strong>Driving time from {route.origin.name}:</strong> {route.drivingTime}
+                          </Typography>
+                        );
+                      }
+                      return null;
+                    })}
+                  </>
+                )}
                 {selectedLocation.arrivalDate && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Arrival:</strong> {selectedLocation.arrivalDate.toLocaleDateString()}
