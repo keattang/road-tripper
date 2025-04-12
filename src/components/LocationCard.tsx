@@ -44,21 +44,30 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
     const handleClickOutside = (event: MouseEvent) => {
       // Close location autocomplete
       if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
-        const pacContainer = document.querySelector('.pac-container') as HTMLElement;
-        if (pacContainer) {
-          pacContainer.style.display = 'none';
-        }
+        const pacContainers = document.querySelectorAll('.pac-container');
+        pacContainers.forEach(container => {
+          if (container instanceof HTMLElement) {
+            container.style.display = 'none';
+          }
+        });
       }
 
       // Close POI autocompletes
+      let clickedInsidePoiInput = false;
       Object.values(poiInputRefs.current).forEach(inputRef => {
-        if (inputRef && !inputRef.contains(event.target as Node)) {
-          const pacContainer = document.querySelector('.pac-container') as HTMLElement;
-          if (pacContainer) {
-            pacContainer.style.display = 'none';
-          }
+        if (inputRef && inputRef.contains(event.target as Node)) {
+          clickedInsidePoiInput = true;
         }
       });
+
+      if (!clickedInsidePoiInput) {
+        const pacContainers = document.querySelectorAll('.pac-container');
+        pacContainers.forEach(container => {
+          if (container instanceof HTMLElement) {
+            container.style.display = 'none';
+          }
+        });
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
