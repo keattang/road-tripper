@@ -331,7 +331,8 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       placesService.nearbySearch(
         {
           location: new google.maps.LatLng(location.coordinates.lat, location.coordinates.lng),
-          radius: 100,
+          radius: 500, // Increased radius to 500 meters
+          keyword: location.name, // Use the place name as a keyword
           type: 'establishment'
         },
         (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
@@ -452,6 +453,15 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
             <Typography variant="h6" sx={{ mb: 1 }}>{selectedLocation.name}</Typography>
             {placeDetails && (
               <>
+                {placeDetails.photos && placeDetails.photos.length > 0 && (
+                  <Box sx={{ mb: 1 }}>
+                    <img
+                      src={placeDetails.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 })}
+                      alt={selectedLocation.name}
+                      style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
+                    />
+                  </Box>
+                )}
                 {placeDetails.formatted_address && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Address:</strong> {placeDetails.formatted_address}
@@ -534,6 +544,15 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
             <Typography variant="h6" sx={{ mb: 1 }}>{selectedPoi.name}</Typography>
             {poiDetails && (
               <>
+                {poiDetails.photos && poiDetails.photos.length > 0 && (
+                  <Box sx={{ mb: 1 }}>
+                    <img
+                      src={poiDetails.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 })}
+                      alt={selectedPoi.name}
+                      style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
+                    />
+                  </Box>
+                )}
                 {poiDetails.formatted_address && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Address:</strong> {poiDetails.formatted_address}
