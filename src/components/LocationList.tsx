@@ -35,6 +35,60 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
     onTripChange(updatedTrip);
   };
 
+  const handleDeleteLocation = (locationId: string) => {
+    // Filter out the location to be deleted
+    const updatedLocations = trip.locations.filter(loc => loc.id !== locationId);
+    
+    // Recalculate nights stayed for each location
+    const locationsWithNights = updatedLocations.map((loc, index) => {
+      if (index === updatedLocations.length - 1) return loc;
+      
+      const nextLocation = updatedLocations[index + 1];
+      const nightsStayed = differenceInDays(
+        nextLocation.arrivalDate,
+        loc.arrivalDate
+      );
+
+      return {
+        ...loc,
+        nightsStayed,
+      };
+    });
+
+    // Calculate total days
+    const totalDays = locationsWithNights.reduce((total, loc) => {
+      return total + (loc.nightsStayed || 0);
+    }, 0);
+
+    // Collect all points of interest from remaining locations
+    const allPointsOfInterest: PointOfInterest[] = [];
+    locationsWithNights.forEach(location => {
+      location.pointsOfInterest.forEach(poi => {
+        // Add locationId to each POI if not already set
+        if (!poi.locationId) {
+          poi.locationId = location.id;
+        }
+        allPointsOfInterest.push(poi);
+      });
+    });
+
+    // Update the trip with the new locations and recalculated values
+    onTripChange({
+      ...trip,
+      locations: locationsWithNights,
+      pointsOfInterest: allPointsOfInterest,
+      totalDays,
+      routes: [], // Clear routes to force recalculation
+    });
+
+    // Update map bounds if needed
+    if (onMapBoundsUpdate) {
+      setTimeout(() => {
+        onMapBoundsUpdate();
+      }, 100);
+    }
+  };
+
   const handleLocationChange = (updatedLocation: Location) => {
     const updatedLocations = trip.locations.map((loc) =>
       loc.id === updatedLocation.id ? updatedLocation : loc
@@ -92,6 +146,7 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
           <LocationCard
             location={location}
             onLocationChange={handleLocationChange}
+            onDelete={handleDeleteLocation}
             onMapBoundsUpdate={onMapBoundsUpdate}
           />
           {index < trip.locations.length - 1 && (

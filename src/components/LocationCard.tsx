@@ -23,10 +23,11 @@ import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
 interface LocationCardProps {
   location: Location;
   onLocationChange: (location: Location) => void;
+  onDelete?: (locationId: string) => void;
   onMapBoundsUpdate?: () => void;
 }
 
-const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: LocationCardProps) => {
+const LocationCard = ({ location, onLocationChange, onDelete, onMapBoundsUpdate }: LocationCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>(location.pointsOfInterest || []);
   const [locationInputValue, setLocationInputValue] = useState(location.name);
@@ -203,18 +204,32 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
     }));
   };
 
+  const handleDeleteLocation = () => {
+    if (onDelete) {
+      onDelete(location.id);
+    }
+  };
+
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
-        <TextField
-          inputRef={autocompleteRef}
-          fullWidth
-          label="Location Name"
-          value={locationInputValue}
-          onChange={handleLocationInputChange}
-          sx={{ mb: 2 }}
-          placeholder="Search for a location..."
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <TextField
+            inputRef={autocompleteRef}
+            fullWidth
+            label="Location Name"
+            value={locationInputValue}
+            onChange={handleLocationInputChange}
+            placeholder="Search for a location..."
+            sx={{ mr: 1 }}
+          />
+          <IconButton 
+            onClick={handleDeleteLocation}
+            aria-label="delete location"
+          >
+            <Delete />
+          </IconButton>
+        </Box>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <DatePicker
             label="Arrival Date"
