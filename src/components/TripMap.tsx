@@ -1,5 +1,5 @@
 import { useCallback, useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindowF } from '@react-google-maps/api';
 import { Trip, Location, DrivingRoute, PointOfInterest } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
 
@@ -431,7 +431,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       ))}
 
       {mapInitialized && selectedLocation && (
-        <InfoWindow
+        <InfoWindowF
           position={{
             lat: selectedLocation.coordinates.lat,
             lng: selectedLocation.coordinates.lng,
@@ -457,11 +457,11 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
               </>
             )}
           </div>
-        </InfoWindow>
+        </InfoWindowF>
       )}
 
       {mapInitialized && selectedPoi && (
-        <InfoWindow
+        <InfoWindowF
           position={{
             lat: selectedPoi.coordinates.lat,
             lng: selectedPoi.coordinates.lng,
@@ -487,7 +487,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
               </>
             )}
           </div>
-        </InfoWindow>
+        </InfoWindowF>
       )}
     </GoogleMap>
   );
