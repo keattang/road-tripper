@@ -1,6 +1,6 @@
 import { useCallback, useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
-import { Trip, Location, DrivingRoute } from '../types';
+import { Trip, Location, DrivingRoute, PointOfInterest } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
 
 interface TripMapProps {
@@ -29,7 +29,9 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [selectedPoi, setSelectedPoi] = useState<PointOfInterest | null>(null);
   const [placeDetails, setPlaceDetails] = useState<google.maps.places.PlaceResult | null>(null);
+  const [poiDetails, setPoiDetails] = useState<google.maps.places.PlaceResult | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
 
   // Add a ref to track if we're currently calculating routes
@@ -312,8 +314,16 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     setMapInitialized(false);
   }, []);
 
-  const handleMarkerClick = useCallback((location: Location) => {
-    setSelectedLocation(location);
+  const handleMarkerClick = useCallback((location: Location | PointOfInterest, isPoi: boolean = false) => {
+    if (isPoi) {
+      setSelectedPoi(location as PointOfInterest);
+      setSelectedLocation(null);
+      setPlaceDetails(null);
+    } else {
+      setSelectedLocation(location as Location);
+      setSelectedPoi(null);
+      setPoiDetails(null);
+    }
     
     // Get place details if we have a places service
     if (placesService && location.coordinates.lat !== 0 && location.coordinates.lng !== 0) {
@@ -338,7 +348,11 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                 },
                 (place, detailStatus) => {
                   if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
-                    setPlaceDetails(place);
+                    if (isPoi) {
+                      setPoiDetails(place);
+                    } else {
+                      setPlaceDetails(place);
+                    }
                   }
                 }
               );
@@ -351,7 +365,9 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
 
   const handleInfoWindowClose = useCallback(() => {
     setSelectedLocation(null);
+    setSelectedPoi(null);
     setPlaceDetails(null);
+    setPoiDetails(null);
   }, []);
 
   // Expose the fitMapToLocations and recalculateRoutes functions via ref
@@ -398,6 +414,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
             url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
           }}
           title={poi.name}
+          onClick={() => handleMarkerClick(poi, true)}
         />
       ))}
 
@@ -436,6 +453,36 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                 )}
                 {placeDetails.rating && (
                   <p><strong>Rating:</strong> {placeDetails.rating} / 5</p>
+                )}
+              </>
+            )}
+          </div>
+        </InfoWindow>
+      )}
+
+      {mapInitialized && selectedPoi && (
+        <InfoWindow
+          position={{
+            lat: selectedPoi.coordinates.lat,
+            lng: selectedPoi.coordinates.lng,
+          }}
+          onCloseClick={handleInfoWindowClose}
+        >
+          <div>
+            <h3>{selectedPoi.name}</h3>
+            {poiDetails && (
+              <>
+                {poiDetails.formatted_address && (
+                  <p><strong>Address:</strong> {poiDetails.formatted_address}</p>
+                )}
+                {poiDetails.formatted_phone_number && (
+                  <p><strong>Phone:</strong> {poiDetails.formatted_phone_number}</p>
+                )}
+                {poiDetails.website && (
+                  <p><strong>Website:</strong> <a href={poiDetails.website.toString()} target="_blank" rel="noopener noreferrer">Visit Website</a></p>
+                )}
+                {poiDetails.rating && (
+                  <p><strong>Rating:</strong> {poiDetails.rating} / 5</p>
                 )}
               </>
             )}
