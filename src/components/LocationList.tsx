@@ -192,11 +192,12 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       flexDirection: 'column',
       height: '100%',
       position: 'relative',
-      p: 2 // Add padding to the container
     }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        {trip.name}
-      </Typography>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          {trip.name}
+        </Typography>
+      </Box>
       
       <Box sx={{ 
         flex: 1,
@@ -205,7 +206,8 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
         '& > div': { // Style for the droppable container
           display: 'flex',
           flexDirection: 'column',
-          gap: 2 // Add gap between cards
+          gap: 2, // Add gap between cards
+          p: 2 // Add padding to the inner content
         }
       }}>
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -237,7 +239,7 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
                           {index < trip.locations.length - 1 && (
                             <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">
                               <Typography variant="body2" color="primary">
-                                Driving time: {trip.routes?.[index]?.drivingTime || 'Calculating...'}
+                                Driving time: {trip.routes?.[index]?.drivingTime || 'N/A'}
                               </Typography>
                             </Box>
                           )}
