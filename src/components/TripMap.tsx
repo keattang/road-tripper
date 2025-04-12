@@ -515,6 +515,14 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                     />
                   </Box>
                 )}
+                {selectedLocation.arrivalDate && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Arrival:</strong> {selectedLocation.arrivalDate.toLocaleDateString()}
+                    {selectedLocation.nightsStayed !== undefined && (
+                      <span> • {selectedLocation.nightsStayed} night{selectedLocation.nightsStayed !== 1 ? 's' : ''}</span>
+                    )}
+                  </Typography>
+                )}
                 {placeDetails.formatted_address && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Address:</strong> {placeDetails.formatted_address}
@@ -554,14 +562,6 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                     <a href={placeDetails.url.toString()} target="_blank" rel="noopener noreferrer">
                       View on Google Maps
                     </a>
-                  </Typography>
-                )}
-                {selectedLocation.arrivalDate && (
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Arrival:</strong> {selectedLocation.arrivalDate.toLocaleDateString()}
-                    {selectedLocation.nightsStayed !== undefined && (
-                      <span> • {selectedLocation.nightsStayed} night{selectedLocation.nightsStayed !== 1 ? 's' : ''}</span>
-                    )}
                   </Typography>
                 )}
                 {selectedLocation.pointsOfInterest.length > 0 && (
@@ -606,6 +606,11 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                     />
                   </Box>
                 )}
+                {selectedPoi.drivingTimeFromLocation && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Driving time from location:</strong> {selectedPoi.drivingTimeFromLocation}
+                  </Typography>
+                )}
                 {poiDetails.formatted_address && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Address:</strong> {poiDetails.formatted_address}
@@ -645,11 +650,6 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                     <a href={poiDetails.url.toString()} target="_blank" rel="noopener noreferrer">
                       View on Google Maps
                     </a>
-                  </Typography>
-                )}
-                {selectedPoi.drivingTimeFromLocation && (
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Driving time from location:</strong> {selectedPoi.drivingTimeFromLocation}
                   </Typography>
                 )}
               </>
