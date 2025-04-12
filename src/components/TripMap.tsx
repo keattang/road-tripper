@@ -2,6 +2,7 @@ import { useCallback, useState, useRef, forwardRef, useImperativeHandle, useEffe
 import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindowF } from '@react-google-maps/api';
 import { Trip, Location, DrivingRoute, PointOfInterest } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
+import { Box, Typography } from '@mui/material';
 
 interface TripMapProps {
   trip: Trip;
@@ -327,7 +328,6 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     
     // Get place details if we have a places service
     if (placesService && location.coordinates.lat !== 0 && location.coordinates.lng !== 0) {
-      // Use the correct method for the Places API
       placesService.nearbySearch(
         {
           location: new google.maps.LatLng(location.coordinates.lat, location.coordinates.lng),
@@ -338,13 +338,23 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
             const placeId = results[0].place_id;
             
-            // Only proceed if we have a valid placeId
             if (placeId) {
-              // Get detailed information about the place
               placesService.getDetails(
                 { 
                   placeId, 
-                  fields: ['name', 'formatted_address', 'formatted_phone_number', 'website', 'rating', 'reviews', 'photos'] 
+                  fields: [
+                    'name',
+                    'formatted_address',
+                    'formatted_phone_number',
+                    'website',
+                    'rating',
+                    'reviews',
+                    'photos',
+                    'opening_hours',
+                    'price_level',
+                    'types',
+                    'url'
+                  ] 
                 },
                 (place, detailStatus) => {
                   if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
@@ -438,25 +448,77 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           }}
           onCloseClick={handleInfoWindowClose}
         >
-          <div>
-            <h3>{selectedLocation.name}</h3>
+          <Box sx={{ maxWidth: 300, padding: 1 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>{selectedLocation.name}</Typography>
             {placeDetails && (
               <>
                 {placeDetails.formatted_address && (
-                  <p><strong>Address:</strong> {placeDetails.formatted_address}</p>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Address:</strong> {placeDetails.formatted_address}
+                  </Typography>
                 )}
                 {placeDetails.formatted_phone_number && (
-                  <p><strong>Phone:</strong> {placeDetails.formatted_phone_number}</p>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Phone:</strong> {placeDetails.formatted_phone_number}
+                  </Typography>
                 )}
-                {placeDetails.website && (
-                  <p><strong>Website:</strong> <a href={placeDetails.website.toString()} target="_blank" rel="noopener noreferrer">Visit Website</a></p>
+                {placeDetails.opening_hours && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Hours:</strong><br />
+                    {placeDetails.opening_hours.weekday_text?.map((day, index) => (
+                      <span key={index}>{day}<br /></span>
+                    ))}
+                  </Typography>
                 )}
                 {placeDetails.rating && (
-                  <p><strong>Rating:</strong> {placeDetails.rating} / 5</p>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Rating:</strong> {placeDetails.rating} / 5
+                    {placeDetails.price_level && (
+                      <span> • Price Level: {'$'.repeat(placeDetails.price_level)}</span>
+                    )}
+                  </Typography>
+                )}
+                {placeDetails.website && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Website:</strong>{' '}
+                    <a href={placeDetails.website.toString()} target="_blank" rel="noopener noreferrer">
+                      Visit Website
+                    </a>
+                  </Typography>
+                )}
+                {placeDetails.url && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <a href={placeDetails.url.toString()} target="_blank" rel="noopener noreferrer">
+                      View on Google Maps
+                    </a>
+                  </Typography>
+                )}
+                {selectedLocation.arrivalDate && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Arrival:</strong> {selectedLocation.arrivalDate.toLocaleDateString()}
+                    {selectedLocation.nightsStayed !== undefined && (
+                      <span> • {selectedLocation.nightsStayed} night{selectedLocation.nightsStayed !== 1 ? 's' : ''}</span>
+                    )}
+                  </Typography>
+                )}
+                {selectedLocation.pointsOfInterest.length > 0 && (
+                  <>
+                    <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                      Points of Interest:
+                    </Typography>
+                    <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                      {selectedLocation.pointsOfInterest.map(poi => (
+                        <li key={poi.id}>
+                          {poi.name}
+                          {poi.drivingTimeFromLocation && ` (${poi.drivingTimeFromLocation})`}
+                        </li>
+                      ))}
+                    </Box>
+                  </>
                 )}
               </>
             )}
-          </div>
+          </Box>
         </InfoWindowF>
       )}
 
@@ -468,25 +530,59 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           }}
           onCloseClick={handleInfoWindowClose}
         >
-          <div>
-            <h3>{selectedPoi.name}</h3>
+          <Box sx={{ maxWidth: 300, padding: 1 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>{selectedPoi.name}</Typography>
             {poiDetails && (
               <>
                 {poiDetails.formatted_address && (
-                  <p><strong>Address:</strong> {poiDetails.formatted_address}</p>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Address:</strong> {poiDetails.formatted_address}
+                  </Typography>
                 )}
                 {poiDetails.formatted_phone_number && (
-                  <p><strong>Phone:</strong> {poiDetails.formatted_phone_number}</p>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Phone:</strong> {poiDetails.formatted_phone_number}
+                  </Typography>
                 )}
-                {poiDetails.website && (
-                  <p><strong>Website:</strong> <a href={poiDetails.website.toString()} target="_blank" rel="noopener noreferrer">Visit Website</a></p>
+                {poiDetails.opening_hours && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Hours:</strong><br />
+                    {poiDetails.opening_hours.weekday_text?.map((day, index) => (
+                      <span key={index}>{day}<br /></span>
+                    ))}
+                  </Typography>
                 )}
                 {poiDetails.rating && (
-                  <p><strong>Rating:</strong> {poiDetails.rating} / 5</p>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Rating:</strong> {poiDetails.rating} / 5
+                    {poiDetails.price_level && (
+                      <span> • Price Level: {'$'.repeat(poiDetails.price_level)}</span>
+                    )}
+                  </Typography>
+                )}
+                {poiDetails.website && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Website:</strong>{' '}
+                    <a href={poiDetails.website.toString()} target="_blank" rel="noopener noreferrer">
+                      Visit Website
+                    </a>
+                  </Typography>
+                )}
+                {poiDetails.url && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <a href={poiDetails.url.toString()} target="_blank" rel="noopener noreferrer">
+                      View on Google Maps
+                    </a>
+                  </Typography>
+                )}
+                {selectedPoi.drivingTimeFromLocation && (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Driving time from location:</strong> {selectedPoi.drivingTimeFromLocation}
+                  </Typography>
                 )}
               </>
             )}
-          </div>
+          </Box>
         </InfoWindowF>
       )}
     </GoogleMap>
