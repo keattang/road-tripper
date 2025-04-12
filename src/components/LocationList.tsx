@@ -201,7 +201,7 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       <Box sx={{ 
         flex: 1,
         overflowY: 'auto',
-        mb: 8, // Increase bottom margin to prevent content from being hidden behind the fixed bottom section
+        mb: 7, // Increase bottom margin to prevent content from being hidden behind the fixed bottom section
         '& > div': { // Style for the droppable container
           display: 'flex',
           flexDirection: 'column',
