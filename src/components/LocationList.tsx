@@ -1,7 +1,7 @@
 import { Box, Button, Typography } from '@mui/material';
 import { Trip, Location, PointOfInterest } from '../types';
 import LocationCard from './LocationCard';
-import { differenceInDays, addDays } from 'date-fns';
+import { differenceInDays, addDays, format } from 'date-fns';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface LocationListProps {
@@ -201,7 +201,7 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       <Box sx={{ 
         flex: 1,
         overflowY: 'auto',
-        mb: 12, // Increase bottom margin to prevent content from being hidden behind the fixed bottom section
+        mb: 8, // Increase bottom margin to prevent content from being hidden behind the fixed bottom section
         '& > div': { // Style for the droppable container
           display: 'flex',
           flexDirection: 'column',
@@ -265,17 +265,30 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
         zIndex: 10,
         boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)'
       }}>
-        <Button
-          variant="contained"
-          fullWidth
-          onClick={handleAddLocation}
-        >
-          Add Location
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            variant="contained"
+            onClick={handleAddLocation}
+            sx={{ flexShrink: 0 }}
+          >
+            Add Location
+          </Button>
 
-        <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
-          Total days: {trip.totalDays}
-        </Typography>
+          {trip.locations.length > 0 && (
+            <Box sx={{ flex: 1, textAlign: 'left' }}>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {format(trip.locations[0].arrivalDate, 'MMM d, yyyy')} - {
+                  trip.locations[trip.locations.length - 1].arrivalDate 
+                    ? format(trip.locations[trip.locations.length - 1].arrivalDate, 'MMM d, yyyy')
+                    : 'TBD'
+                }
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Total days: {trip.totalDays}
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
     </Box>
   );
