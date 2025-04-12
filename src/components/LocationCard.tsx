@@ -194,11 +194,6 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
       ...location,
       pointsOfInterest: updatedPOIs,
     });
-    if (onMapBoundsUpdate) {
-      setTimeout(() => {
-        onMapBoundsUpdate();
-      }, 100);
-    }
   };
 
   const handleLocationInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,12 +264,6 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
                 ...location,
                 pointsOfInterest: updatedPOIs,
               });
-
-              if (onMapBoundsUpdate) {
-                setTimeout(() => {
-                  onMapBoundsUpdate();
-                }, 100);
-              }
             }
           });
 
