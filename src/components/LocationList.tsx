@@ -2,6 +2,7 @@ import { Box, Button, Typography } from '@mui/material';
 import { Trip, Location, PointOfInterest } from '../types';
 import LocationCard from './LocationCard';
 import { differenceInDays, addDays } from 'date-fns';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface LocationListProps {
   trip: Trip;
@@ -124,29 +125,99 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
     });
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(trip.locations);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Calculate nights stayed for each location
+    const locationsWithNights = items.map((loc, index) => {
+      if (index === items.length - 1) return loc;
+      
+      const nextLocation = items[index + 1];
+      const nightsStayed = differenceInDays(
+        nextLocation.arrivalDate,
+        loc.arrivalDate
+      );
+
+      return {
+        ...loc,
+        nightsStayed,
+      };
+    });
+
+    const totalDays = locationsWithNights.reduce((total, loc) => {
+      return total + (loc.nightsStayed || 0);
+    }, 0);
+
+    // Collect all points of interest from all locations
+    const allPointsOfInterest: PointOfInterest[] = [];
+    locationsWithNights.forEach(location => {
+      location.pointsOfInterest.forEach(poi => {
+        if (!poi.locationId) {
+          poi.locationId = location.id;
+        }
+        allPointsOfInterest.push(poi);
+      });
+    });
+
+    onTripChange({
+      ...trip,
+      locations: locationsWithNights,
+      pointsOfInterest: allPointsOfInterest,
+      totalDays,
+      routes: [], // Clear routes to force recalculation
+    });
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
         {trip.name}
       </Typography>
       
-      {trip.locations.map((location, index) => (
-        <Box key={location.id}>
-          <LocationCard
-            location={location}
-            onLocationChange={handleLocationChange}
-            onMapBoundsUpdate={onMapBoundsUpdate}
-            onDelete={() => handleDeleteLocation(location.id)}
-          />
-          {index < trip.locations.length - 1 && (
-            <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">
-              <Typography variant="body2" color="primary">
-                Driving time: {trip.routes?.[index]?.drivingTime || 'Calculating...'}
-              </Typography>
-            </Box>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="locations">
+          {(provided) => (
+            <div {...provided.droppableProps} ref={provided.innerRef}>
+              {trip.locations.map((location, index) => (
+                <Draggable key={location.id} draggableId={location.id} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      style={{
+                        ...provided.draggableProps.style,
+                        opacity: snapshot.isDragging ? 0.8 : 1,
+                      }}
+                    >
+                      <Box key={location.id}>
+                        <LocationCard
+                          location={location}
+                          onLocationChange={handleLocationChange}
+                          onMapBoundsUpdate={onMapBoundsUpdate}
+                          onDelete={() => handleDeleteLocation(location.id)}
+                        />
+                        {index < trip.locations.length - 1 && (
+                          <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">
+                            <Typography variant="body2" color="primary">
+                              Driving time: {trip.routes?.[index]?.drivingTime || 'Calculating...'}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
           )}
-        </Box>
-      ))}
+        </Droppable>
+      </DragDropContext>
 
       <Button
         variant="contained"
