@@ -39,6 +39,34 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
   
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS);
 
+  // Add click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close location autocomplete
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        const pacContainer = document.querySelector('.pac-container') as HTMLElement;
+        if (pacContainer) {
+          pacContainer.style.display = 'none';
+        }
+      }
+
+      // Close POI autocompletes
+      Object.values(poiInputRefs.current).forEach(inputRef => {
+        if (inputRef && !inputRef.contains(event.target as Node)) {
+          const pacContainer = document.querySelector('.pac-container') as HTMLElement;
+          if (pacContainer) {
+            pacContainer.style.display = 'none';
+          }
+        }
+      });
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     if (isLoaded && autocompleteRef.current && !autocomplete) {
       const options = {
