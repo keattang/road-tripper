@@ -23,11 +23,11 @@ import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
 interface LocationCardProps {
   location: Location;
   onLocationChange: (location: Location) => void;
-  onDelete?: (locationId: string) => void;
   onMapBoundsUpdate?: () => void;
+  onDelete?: () => void;
 }
 
-const LocationCard = ({ location, onLocationChange, onDelete, onMapBoundsUpdate }: LocationCardProps) => {
+const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete }: LocationCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>(location.pointsOfInterest || []);
   const [locationInputValue, setLocationInputValue] = useState(location.name);
@@ -204,31 +204,29 @@ const LocationCard = ({ location, onLocationChange, onDelete, onMapBoundsUpdate 
     }));
   };
 
-  const handleDeleteLocation = () => {
-    if (onDelete) {
-      onDelete(location.id);
-    }
-  };
-
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
           <TextField
             inputRef={autocompleteRef}
             fullWidth
             label="Location Name"
             value={locationInputValue}
             onChange={handleLocationInputChange}
+            sx={{ mb: 2 }}
             placeholder="Search for a location..."
-            sx={{ mr: 1 }}
           />
-          <IconButton 
-            onClick={handleDeleteLocation}
-            aria-label="delete location"
-          >
-            <Delete />
-          </IconButton>
+          {onDelete && (
+            <IconButton
+              edge="end"
+              aria-label="delete"
+              onClick={onDelete}
+              sx={{ mt: 1 }}
+            >
+              <Delete />
+            </IconButton>
+          )}
         </Box>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <DatePicker
