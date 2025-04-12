@@ -30,6 +30,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
   const [expanded, setExpanded] = useState(false);
   const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>(location.pointsOfInterest || []);
   const [locationInputValue, setLocationInputValue] = useState(location.name);
+  const [poiInputValues, setPoiInputValues] = useState<{ [key: string]: string }>({});
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const autocompleteRef = useRef<HTMLInputElement>(null);
   const poiAutocompleteRefs = useRef<{ [key: string]: google.maps.places.Autocomplete }>({});
@@ -100,11 +101,24 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
           const place = autocompleteInstance.getPlace();
           
           if (place.geometry?.location) {
+            const selectedName = place.name || place.formatted_address || "";
+            
+            // Update the input value state
+            setPoiInputValues(prev => ({
+              ...prev,
+              [poi.id]: selectedName
+            }));
+            
+            // Update the input field directly
+            if (inputRef) {
+              inputRef.value = selectedName;
+            }
+            
             const updatedPOIs = pointsOfInterest.map((p) =>
               p.id === poi.id
                 ? {
                     ...p,
-                    name: place.name || place.formatted_address || "",
+                    name: selectedName,
                     coordinates: {
                       lat: place.geometry.location.lat(),
                       lng: place.geometry.location.lng(),
@@ -181,6 +195,13 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
   const handleLocationInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setLocationInputValue(event.target.value);
   };
+  
+  const handlePoiInputChange = (poiId: string, value: string) => {
+    setPoiInputValues(prev => ({
+      ...prev,
+      [poiId]: value
+    }));
+  };
 
   return (
     <Card sx={{ mb: 2 }}>
@@ -226,7 +247,8 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate }: Locatio
                   }}
                   fullWidth
                   label="Point of Interest"
-                  value={poi.name}
+                  value={poiInputValues[poi.id] !== undefined ? poiInputValues[poi.id] : poi.name}
+                  onChange={(e) => handlePoiInputChange(poi.id, e.target.value)}
                   placeholder="Search for a point of interest..."
                   sx={{ mr: 1 }}
                 />
