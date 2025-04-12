@@ -187,64 +187,96 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
   };
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      height: '100%',
+      position: 'relative',
+      p: 2 // Add padding to the container
+    }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
         {trip.name}
       </Typography>
       
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="locations">
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef}>
-              {trip.locations.map((location, index) => (
-                <Draggable key={location.id} draggableId={location.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      style={{
-                        ...provided.draggableProps.style,
-                        opacity: snapshot.isDragging ? 0.8 : 1,
-                      }}
-                    >
-                      <Box key={location.id}>
-                        <LocationCard
-                          location={location}
-                          onLocationChange={handleLocationChange}
-                          onMapBoundsUpdate={onMapBoundsUpdate}
-                          onDelete={() => handleDeleteLocation(location.id)}
-                        />
-                        {index < trip.locations.length - 1 && (
-                          <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">
-                            <Typography variant="body2" color="primary">
-                              Driving time: {trip.routes?.[index]?.drivingTime || 'Calculating...'}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <Box sx={{ 
+        flex: 1,
+        overflowY: 'auto',
+        mb: 12, // Increase bottom margin to prevent content from being hidden behind the fixed bottom section
+        '& > div': { // Style for the droppable container
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2 // Add gap between cards
+        }
+      }}>
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="locations">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+              >
+                {trip.locations.map((location, index) => (
+                  <Draggable key={location.id} draggableId={location.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        style={{
+                          ...provided.draggableProps.style,
+                          opacity: snapshot.isDragging ? 0.8 : 1,
+                        }}
+                      >
+                        <Box key={location.id}>
+                          <LocationCard
+                            location={location}
+                            onLocationChange={handleLocationChange}
+                            onMapBoundsUpdate={onMapBoundsUpdate}
+                            onDelete={() => handleDeleteLocation(location.id)}
+                          />
+                          {index < trip.locations.length - 1 && (
+                            <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">
+                              <Typography variant="body2" color="primary">
+                                Driving time: {trip.routes?.[index]?.drivingTime || 'Calculating...'}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+      </Box>
 
-      <Button
-        variant="contained"
-        fullWidth
-        onClick={handleAddLocation}
-        sx={{ mt: 2 }}
-      >
-        Add Location
-      </Button>
+      <Box sx={{ 
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        bgcolor: 'background.paper',
+        p: 2,
+        borderTop: 1,
+        borderColor: 'divider',
+        zIndex: 10,
+        boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)'
+      }}>
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleAddLocation}
+        >
+          Add Location
+        </Button>
 
-      <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
-        Total days: {trip.totalDays}
-      </Typography>
+        <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
+          Total days: {trip.totalDays}
+        </Typography>
+      </Box>
     </Box>
   );
 };
