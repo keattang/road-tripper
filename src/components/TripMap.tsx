@@ -33,6 +33,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const [selectedPoi, setSelectedPoi] = useState<PointOfInterest | null>(null);
   const [placeDetails, setPlaceDetails] = useState<google.maps.places.PlaceResult | null>(null);
   const [poiDetails, setPoiDetails] = useState<google.maps.places.PlaceResult | null>(null);
+  const [tempRoute, setTempRoute] = useState<google.maps.DirectionsResult | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
 
   // Add a ref to track if we're currently calculating routes
@@ -320,10 +321,38 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       setSelectedPoi(location as PointOfInterest);
       setSelectedLocation(null);
       setPlaceDetails(null);
+      
+      // Find the parent location for this POI
+      const parentLocation = trip.locations.find(loc => 
+        loc.pointsOfInterest.some(poi => poi.id === location.id)
+      );
+      
+      // Calculate driving time from parent location to POI if we have both
+      if (parentLocation && directionsService) {
+        directionsService.route(
+          {
+            origin: { lat: parentLocation.coordinates.lat, lng: parentLocation.coordinates.lng },
+            destination: { lat: location.coordinates.lat, lng: location.coordinates.lng },
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK && result) {
+              const drivingTime = result.routes[0].legs[0].duration?.text;
+              if (drivingTime) {
+                // Update the POI's driving time
+                (location as PointOfInterest).drivingTimeFromLocation = drivingTime;
+                // Store the route result to display it
+                setTempRoute(result);
+              }
+            }
+          }
+        );
+      }
     } else {
       setSelectedLocation(location as Location);
       setSelectedPoi(null);
       setPoiDetails(null);
+      setTempRoute(null);
     }
     
     // Get place details if we have a places service
@@ -372,13 +401,14 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         }
       );
     }
-  }, [placesService]);
+  }, [placesService, trip.locations, directionsService]);
 
   const handleInfoWindowClose = useCallback(() => {
     setSelectedLocation(null);
     setSelectedPoi(null);
     setPlaceDetails(null);
     setPoiDetails(null);
+    setTempRoute(null);
   }, []);
 
   // Expose the fitMapToLocations and recalculateRoutes functions via ref
@@ -440,6 +470,29 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           }}
         />
       ))}
+
+      {mapInitialized && tempRoute && tempRoute.routes[0] && (
+        <Polyline
+          path={tempRoute.routes[0].overview_path?.map(point => ({
+            lat: point.lat(),
+            lng: point.lng(),
+          }))}
+          options={{
+            strokeColor: '#4285F4',
+            strokeOpacity: 0.8,
+            strokeWeight: 3,
+            icons: [{
+              icon: {
+                path: 'M 0,-1 0,1',
+                strokeOpacity: 1,
+                scale: 3,
+              },
+              offset: '50%',
+              repeat: '100px'
+            }]
+          }}
+        />
+      )}
 
       {mapInitialized && selectedLocation && (
         <InfoWindowF
