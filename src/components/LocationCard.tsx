@@ -55,7 +55,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
       autocompleteInstance.addListener("place_changed", () => {
         const place = autocompleteInstance.getPlace();
         
-        if (place.geometry?.location) {
+        if (place.geometry && place.geometry.location) {
           const newLocation: Location = {
             ...location,
             name: place.name || place.formatted_address || "",
@@ -84,65 +84,73 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
   useEffect(() => {
     if (!isLoaded) return;
 
+    // Create a function to initialize autocomplete for a POI
+    const initializeAutocompleteForPoi = (poi: PointOfInterest, inputRef: HTMLInputElement) => {
+      if (poiAutocompleteRefs.current[poi.id]) return; // Already initialized
+
+      const options = {
+        componentRestrictions: { country: "au" },
+        fields: ["address_components", "geometry", "name", "formatted_address"],
+        types: ["establishment", "geocode"],
+      };
+
+      const autocompleteInstance = new google.maps.places.Autocomplete(
+        inputRef,
+        options
+      );
+
+      autocompleteInstance.addListener("place_changed", () => {
+        const place = autocompleteInstance.getPlace();
+        
+        if (place.geometry && place.geometry.location) {
+          const selectedName = place.name || place.formatted_address || "";
+          
+          // Update the input value state
+          setPoiInputValues(prev => ({
+            ...prev,
+            [poi.id]: selectedName
+          }));
+          
+          // Update the input field directly
+          if (inputRef) {
+            inputRef.value = selectedName;
+          }
+          
+          const updatedPOIs = pointsOfInterest.map((p) =>
+            p.id === poi.id
+              ? {
+                  ...p,
+                  name: selectedName,
+                  coordinates: {
+                    lat: place.geometry!.location!.lat(),
+                    lng: place.geometry!.location!.lng(),
+                  },
+                }
+              : p
+          );
+          
+          setPointsOfInterest(updatedPOIs);
+          onLocationChange({
+            ...location,
+            pointsOfInterest: updatedPOIs,
+          });
+
+          if (onMapBoundsUpdate) {
+            setTimeout(() => {
+              onMapBoundsUpdate();
+            }, 100);
+          }
+        }
+      });
+
+      poiAutocompleteRefs.current[poi.id] = autocompleteInstance;
+    };
+
+    // Initialize autocomplete for all POIs
     pointsOfInterest.forEach((poi) => {
       const inputRef = poiInputRefs.current[poi.id];
-      if (inputRef && !poiAutocompleteRefs.current[poi.id]) {
-        const options = {
-          componentRestrictions: { country: "au" },
-          fields: ["address_components", "geometry", "name"],
-          types: ["establishment", "geocode"],
-        };
-
-        const autocompleteInstance = new google.maps.places.Autocomplete(
-          inputRef,
-          options
-        );
-
-        autocompleteInstance.addListener("place_changed", () => {
-          const place = autocompleteInstance.getPlace();
-          
-          if (place.geometry?.location) {
-            const selectedName = place.name || place.formatted_address || "";
-            
-            // Update the input value state
-            setPoiInputValues(prev => ({
-              ...prev,
-              [poi.id]: selectedName
-            }));
-            
-            // Update the input field directly
-            if (inputRef) {
-              inputRef.value = selectedName;
-            }
-            
-            const updatedPOIs = pointsOfInterest.map((p) =>
-              p.id === poi.id
-                ? {
-                    ...p,
-                    name: selectedName,
-                    coordinates: {
-                      lat: place.geometry.location.lat(),
-                      lng: place.geometry.location.lng(),
-                    },
-                  }
-                : p
-            );
-            
-            setPointsOfInterest(updatedPOIs);
-            onLocationChange({
-              ...location,
-              pointsOfInterest: updatedPOIs,
-            });
-
-            if (onMapBoundsUpdate) {
-              setTimeout(() => {
-                onMapBoundsUpdate();
-              }, 100);
-            }
-          }
-        });
-
-        poiAutocompleteRefs.current[poi.id] = autocompleteInstance;
+      if (inputRef) {
+        initializeAutocompleteForPoi(poi, inputRef);
       }
     });
 
@@ -202,6 +210,78 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
       ...prev,
       [poiId]: value
     }));
+    
+    // Trigger a search when the input value changes
+    if (isLoaded && poiInputRefs.current[poiId]) {
+      const inputRef = poiInputRefs.current[poiId];
+      
+      // If autocomplete doesn't exist for this POI, create it
+      if (!poiAutocompleteRefs.current[poiId]) {
+        const poi = pointsOfInterest.find(p => p.id === poiId);
+        if (poi) {
+          const options = {
+            componentRestrictions: { country: "au" },
+            fields: ["address_components", "geometry", "name", "formatted_address"],
+            types: ["establishment", "geocode"],
+          };
+
+          const autocompleteInstance = new google.maps.places.Autocomplete(
+            inputRef,
+            options
+          );
+
+          autocompleteInstance.addListener("place_changed", () => {
+            const place = autocompleteInstance.getPlace();
+            
+            if (place.geometry && place.geometry.location) {
+              const selectedName = place.name || place.formatted_address || "";
+              
+              // Update the input value state
+              setPoiInputValues(prev => ({
+                ...prev,
+                [poiId]: selectedName
+              }));
+              
+              // Update the input field directly
+              if (inputRef) {
+                inputRef.value = selectedName;
+              }
+              
+              // Create a new array with all POIs, updating only the one being edited
+              const updatedPOIs = pointsOfInterest.map((p) =>
+                p.id === poiId
+                  ? {
+                      ...p,
+                      name: selectedName,
+                      coordinates: {
+                        lat: place.geometry!.location!.lat(),
+                        lng: place.geometry!.location!.lng(),
+                      },
+                    }
+                  : p
+              );
+              
+              // Update the local state
+              setPointsOfInterest(updatedPOIs);
+              
+              // Update the parent component with the complete location object
+              onLocationChange({
+                ...location,
+                pointsOfInterest: updatedPOIs,
+              });
+
+              if (onMapBoundsUpdate) {
+                setTimeout(() => {
+                  onMapBoundsUpdate();
+                }, 100);
+              }
+            }
+          });
+
+          poiAutocompleteRefs.current[poiId] = autocompleteInstance;
+        }
+      }
+    }
   };
 
   return (
