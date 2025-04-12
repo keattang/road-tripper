@@ -1,5 +1,5 @@
 import { Box, Button, Typography } from '@mui/material';
-import { Trip, Location } from '../types';
+import { Trip, Location, PointOfInterest } from '../types';
 import LocationCard from './LocationCard';
 import { differenceInDays, addDays } from 'date-fns';
 
@@ -60,9 +60,22 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       return total + (loc.nightsStayed || 0);
     }, 0);
 
+    // Collect all points of interest from all locations
+    const allPointsOfInterest: PointOfInterest[] = [];
+    locationsWithNights.forEach(location => {
+      location.pointsOfInterest.forEach(poi => {
+        // Add locationId to each POI if not already set
+        if (!poi.locationId) {
+          poi.locationId = location.id;
+        }
+        allPointsOfInterest.push(poi);
+      });
+    });
+
     onTripChange({
       ...trip,
       locations: locationsWithNights,
+      pointsOfInterest: allPointsOfInterest,
       totalDays,
       routes: [], // Clear routes to force recalculation
     });
@@ -100,8 +113,8 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
         Add Location
       </Button>
 
-      <Typography variant="h6" sx={{ mt: 2, textAlign: 'center' }} data-testid="total-days">
-        Total Days: {trip.totalDays}
+      <Typography variant="body1" sx={{ mt: 2, textAlign: 'center' }}>
+        Total days: {trip.totalDays}
       </Typography>
     </Box>
   );
