@@ -1,8 +1,8 @@
 import { Box, Paper } from '@mui/material';
 import { Trip } from '../types';
 import LocationList from './LocationList';
-import TripMap from './TripMap';
-import { useRef, useState } from 'react';
+import TripMap, { TripMapRef } from './TripMap';
+import { useRef } from 'react';
 
 interface TripPlannerProps {
   trip: Trip;
@@ -10,17 +10,19 @@ interface TripPlannerProps {
 }
 
 const TripPlanner = ({ trip, onTripChange }: TripPlannerProps) => {
-  const mapRef = useRef<{ fitMapToLocations: () => void } | null>(null);
-  const [routes, setRoutes] = useState<Trip['routes']>([]);
+  const mapRef = useRef<TripMapRef>(null);
 
   const handleMapBoundsUpdate = () => {
+    console.log('TripPlanner: handleMapBoundsUpdate called');
     if (mapRef.current) {
+      console.log('TripPlanner: Calling fitMapToLocations on map ref');
       mapRef.current.fitMapToLocations();
+    } else {
+      console.warn('TripPlanner: mapRef.current is null');
     }
   };
 
   const handleRoutesUpdate = (newRoutes: Trip['routes']) => {
-    setRoutes(newRoutes);
     onTripChange({
       ...trip,
       routes: newRoutes

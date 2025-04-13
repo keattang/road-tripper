@@ -253,12 +253,16 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
         // Validate the uploaded trip data
         const validationResult = validateTripData(uploadedTrip);
         if (validationResult.isValid) {
+          console.log('Trip data validated successfully, updating trip state...');
           // Update the trip state with the uploaded data
           onTripChange(uploadedTrip);
           
           // Trigger map bounds update to reflect the new locations
           if (onMapBoundsUpdate) {
+            console.log('Triggering map bounds update...');
             onMapBoundsUpdate();
+          } else {
+            console.warn('onMapBoundsUpdate callback is not defined');
           }
         } else {
           setAlertMessage("Invalid trip data format. Please upload a valid trip file.");
@@ -280,23 +284,83 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
   };
 
   const deserializeTripData = (data: unknown): Trip => {
+    console.log('Deserializing trip data:', data);
     // Create a deep copy of the data
     const tripData = JSON.parse(JSON.stringify(data));
     
     // Convert date strings to Date objects for each location
     if (tripData.locations && Array.isArray(tripData.locations)) {
+      console.log(`Found ${tripData.locations.length} locations to process`);
       tripData.locations = tripData.locations.map((location: Record<string, unknown>) => {
+        // Log the location before processing
+        console.log('Processing location:', location.name, 'with coordinates:', location.coordinates);
+        
         // Convert arrivalDate string to Date object
         if (location.arrivalDate && typeof location.arrivalDate === 'string') {
           location.arrivalDate = new Date(location.arrivalDate);
         }
         
+        // Ensure coordinates are properly formatted
+        if (location.coordinates) {
+          const coords = location.coordinates as Record<string, unknown>;
+          // Check if coordinates are in the expected format
+          if (typeof coords.lat === 'string') {
+            coords.lat = parseFloat(coords.lat);
+          }
+          if (typeof coords.lng === 'string') {
+            coords.lng = parseFloat(coords.lng);
+          }
+          
+          // Validate coordinates are numbers and within valid ranges
+          const lat = coords.lat as number;
+          const lng = coords.lng as number;
+          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            console.warn('Invalid coordinates for location:', location.name, coords);
+            // Instead of setting to 0,0, we'll remove the coordinates
+            // This will allow the map to skip this location when fitting bounds
+            delete location.coordinates;
+          }
+        } else {
+          console.warn('Missing coordinates for location:', location.name);
+          // Don't add default coordinates, just log the warning
+        }
+        
         // Convert dates in points of interest if they exist
         if (location.pointsOfInterest && Array.isArray(location.pointsOfInterest)) {
+          console.log(`Processing ${location.pointsOfInterest.length} POIs for location:`, location.name);
           location.pointsOfInterest = location.pointsOfInterest.map((poi: Record<string, unknown>) => {
+            // Log the POI before processing
+            console.log('Processing POI:', poi.name, 'with coordinates:', poi.coordinates);
+            
             if (poi.arrivalDate && typeof poi.arrivalDate === 'string') {
               poi.arrivalDate = new Date(poi.arrivalDate);
             }
+            
+            // Ensure coordinates are properly formatted for POIs
+            if (poi.coordinates) {
+              const coords = poi.coordinates as Record<string, unknown>;
+              // Check if coordinates are in the expected format
+              if (typeof coords.lat === 'string') {
+                coords.lat = parseFloat(coords.lat);
+              }
+              if (typeof coords.lng === 'string') {
+                coords.lng = parseFloat(coords.lng);
+              }
+              
+              // Validate coordinates are numbers and within valid ranges
+              const lat = coords.lat as number;
+              const lng = coords.lng as number;
+              if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                console.warn('Invalid coordinates for POI:', poi.name, coords);
+                // Instead of setting to 0,0, we'll remove the coordinates
+                // This will allow the map to skip this POI when fitting bounds
+                delete poi.coordinates;
+              }
+            } else {
+              console.warn('Missing coordinates for POI:', poi.name);
+              // Don't add default coordinates, just log the warning
+            }
+            
             return poi;
           });
         }
@@ -305,6 +369,57 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       });
     }
     
+    // Process trip-level points of interest
+    if (tripData.pointsOfInterest && Array.isArray(tripData.pointsOfInterest)) {
+      console.log(`Processing ${tripData.pointsOfInterest.length} trip-level POIs`);
+      tripData.pointsOfInterest = tripData.pointsOfInterest.map((poi: Record<string, unknown>) => {
+        // Log the POI before processing
+        console.log('Processing trip-level POI:', poi.name, 'with coordinates:', poi.coordinates);
+        
+        if (poi.arrivalDate && typeof poi.arrivalDate === 'string') {
+          poi.arrivalDate = new Date(poi.arrivalDate);
+        }
+        
+        // Ensure coordinates are properly formatted for POIs
+        if (poi.coordinates) {
+          const coords = poi.coordinates as Record<string, unknown>;
+          // Check if coordinates are in the expected format
+          if (typeof coords.lat === 'string') {
+            coords.lat = parseFloat(coords.lat);
+          }
+          if (typeof coords.lng === 'string') {
+            coords.lng = parseFloat(coords.lng);
+          }
+          
+          // Validate coordinates are numbers and within valid ranges
+          const lat = coords.lat as number;
+          const lng = coords.lng as number;
+          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            console.warn('Invalid coordinates for trip-level POI:', poi.name, coords);
+            // Instead of setting to 0,0, we'll remove the coordinates
+            // This will allow the map to skip this POI when fitting bounds
+            delete poi.coordinates;
+          }
+        } else {
+          console.warn('Missing coordinates for trip-level POI:', poi.name);
+          // Don't add default coordinates, just log the warning
+        }
+        
+        return poi;
+      });
+    }
+    
+    // Process routes if they exist
+    if (tripData.routes && Array.isArray(tripData.routes)) {
+      console.log(`Processing ${tripData.routes.length} routes`);
+      // We don't need to do much with routes as they reference locations by ID
+      // Just ensure they have the correct structure
+      tripData.routes = tripData.routes.filter((route: Record<string, unknown>) => {
+        return route.origin && route.destination && route.drivingTime && route.distance;
+      });
+    }
+    
+    console.log('Deserialized trip data:', tripData);
     return tripData as Trip;
   };
 
