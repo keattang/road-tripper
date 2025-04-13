@@ -53,106 +53,41 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
       return;
     }
 
-    try {
-      const bounds = new google.maps.LatLngBounds();
-      let hasValidCoordinates = false;
-      
-      // Add all locations to bounds
-      if (trip.locations && trip.locations.length > 0) {
-        trip.locations.forEach(location => {
-          // Check if coordinates exist and are not zero
-          if (location.coordinates && 
-              location.coordinates.lat !== 0 && 
-              location.coordinates.lng !== 0) {
-            try {
-              // Validate coordinates are within valid range
-              if (
-                location.coordinates.lat >= -90 && 
-                location.coordinates.lat <= 90 && 
-                location.coordinates.lng >= -180 && 
-                location.coordinates.lng <= 180
-              ) {
-                bounds.extend({
-                  lat: location.coordinates.lat,
-                  lng: location.coordinates.lng
-                });
-                hasValidCoordinates = true;
-              }
-            } catch {
-              // Invalid coordinates, skip this location
-            }
-          }
-        });
-      }
-      
-      // Add all points of interest to bounds
-      if (trip.pointsOfInterest && trip.pointsOfInterest.length > 0) {
-        trip.pointsOfInterest.forEach(poi => {
-          // Check if coordinates exist and are not zero
-          if (poi.coordinates && 
-              poi.coordinates.lat !== 0 && 
-              poi.coordinates.lng !== 0) {
-            try {
-              // Validate coordinates are within valid range
-              if (
-                poi.coordinates.lat >= -90 && 
-                poi.coordinates.lat <= 90 && 
-                poi.coordinates.lng >= -180 && 
-                poi.coordinates.lng <= 180
-              ) {
-                bounds.extend({
-                  lat: poi.coordinates.lat,
-                  lng: poi.coordinates.lng
-                });
-                hasValidCoordinates = true;
-              }
-            } catch {
-              // Invalid coordinates, skip this POI
-            }
-          }
-        });
-      }
-      
-      // Only fit bounds if we have valid coordinates
-      if (hasValidCoordinates) {
-        // Check if bounds are valid before fitting
-        if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat() || 
-            bounds.getNorthEast().lng() !== bounds.getSouthWest().lng()) {
-          mapRef.current.fitBounds(bounds);
-          
-          // Add some padding to the bounds
-          const listener = google.maps.event.addListenerOnce(mapRef.current, 'bounds_changed', () => {
-            if (mapRef.current) {
-              const currentZoom = mapRef.current.getZoom();
-              if (currentZoom && currentZoom > 15) {
-                mapRef.current.setZoom(15);
-              }
-            }
-            google.maps.event.removeListener(listener);
-          });
-        } else {
-          // If bounds are invalid (same point), just center on the first valid location
-          const firstValidLocation = trip.locations.find(loc => 
-            loc.coordinates && 
-            loc.coordinates.lat !== 0 && 
-            loc.coordinates.lng !== 0 &&
-            loc.coordinates.lat >= -90 && 
-            loc.coordinates.lat <= 90 && 
-            loc.coordinates.lng >= -180 && 
-            loc.coordinates.lng <= 180
-          );
-          
-          if (firstValidLocation) {
-            mapRef.current.setCenter({
-              lat: firstValidLocation.coordinates.lat,
-              lng: firstValidLocation.coordinates.lng
-            });
-            mapRef.current.setZoom(12);
-          }
-        }
-      }
-    } catch {
-      // Error fitting map bounds
+    const bounds = new google.maps.LatLngBounds();
+
+    // Add all locations to bounds
+    trip.locations
+      .filter(location => location.coordinates && 
+        location.coordinates.lat !== 0 && 
+        location.coordinates.lng !== 0 && 
+        isFinite(location.coordinates.lat) && 
+        isFinite(location.coordinates.lng) &&
+        location.coordinates.lat >= -90 && 
+        location.coordinates.lat <= 90 && 
+        location.coordinates.lng >= -180 && 
+        location.coordinates.lng <= 180)
+      .forEach(location => {
+        bounds.extend(location.coordinates);
+      });
+
+    // Add all points of interest to bounds
+    trip.pointsOfInterest
+      .filter(poi => poi.coordinates && 
+        poi.coordinates.lat !== 0 && 
+        poi.coordinates.lng !== 0 && 
+        isFinite(poi.coordinates.lat) && 
+        isFinite(poi.coordinates.lng) &&
+        poi.coordinates.lat >= -90 && 
+        poi.coordinates.lat <= 90 && 
+        poi.coordinates.lng >= -180 && 
+        poi.coordinates.lng <= 180)
+      .forEach(poi => {
+        bounds.extend(poi.coordinates);
+      });
+
+    // If we have valid bounds, fit the map to them
+    if (!bounds.isEmpty()) {
+      mapRef.current.fitBounds(bounds);
     }
   }, [trip]);
 
@@ -571,7 +506,17 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
           }
         `}
       </style>
-      {mapInitialized && trip.locations.map((location) => (
+      {mapInitialized && trip.locations
+        .filter(location => location.coordinates && 
+          location.coordinates.lat !== 0 && 
+          location.coordinates.lng !== 0 && 
+          isFinite(location.coordinates.lat) && 
+          isFinite(location.coordinates.lng) &&
+          location.coordinates.lat >= -90 && 
+          location.coordinates.lat <= 90 && 
+          location.coordinates.lng >= -180 && 
+          location.coordinates.lng <= 180)
+        .map((location) => (
         <Marker
           key={location.id}
           position={{
@@ -604,7 +549,17 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
         />
       ))}
 
-      {mapInitialized && trip.pointsOfInterest.map((poi) => (
+      {mapInitialized && trip.pointsOfInterest
+        .filter(poi => poi.coordinates && 
+          poi.coordinates.lat !== 0 && 
+          poi.coordinates.lng !== 0 && 
+          isFinite(poi.coordinates.lat) && 
+          isFinite(poi.coordinates.lng) &&
+          poi.coordinates.lat >= -90 && 
+          poi.coordinates.lat <= 90 && 
+          poi.coordinates.lng >= -180 && 
+          poi.coordinates.lng <= 180)
+        .map((poi) => (
         <Marker
           key={poi.id}
           position={{

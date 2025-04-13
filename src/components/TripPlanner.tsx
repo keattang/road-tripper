@@ -14,12 +14,8 @@ const TripPlanner = ({ trip, onTripChange }: TripPlannerProps) => {
   const locationListRef = useRef<LocationListRef>(null);
 
   const handleMapBoundsUpdate = () => {
-    console.log('TripPlanner: handleMapBoundsUpdate called');
     if (mapRef.current) {
-      console.log('TripPlanner: Calling fitMapToLocations on map ref');
       mapRef.current.fitMapToLocations();
-    } else {
-      console.warn('TripPlanner: mapRef.current is null');
     }
   };
 
