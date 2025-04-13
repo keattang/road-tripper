@@ -389,69 +389,105 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     
     // Get place details if we have a places service
     if (placesService && location.coordinates.lat !== 0 && location.coordinates.lng !== 0) {
-      placesService.nearbySearch(
-        {
-          location: new google.maps.LatLng(location.coordinates.lat, location.coordinates.lng),
-          radius: 500, // Increased radius to 500 meters
-          keyword: location.name, // Use the place name as a keyword
-          type: 'establishment'
-        },
-        (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
-            const placeId = results[0].place_id;
-            
-            if (placeId) {
-              placesService.getDetails(
-                { 
-                  placeId, 
-                  fields: [
-                    'name',
-                    'formatted_address',
-                    'formatted_phone_number',
-                    'website',
-                    'rating',
-                    'reviews',
-                    'photos',
-                    'opening_hours',
-                    'price_level',
-                    'types',
-                    'url'
-                  ] 
-                },
-                (place, detailStatus) => {
-                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
-                    if (isPoi) {
-                      setPoiDetails(place);
-                      setIsLoadingPoiDetails(false);
-                    } else {
-                      setPlaceDetails(place);
-                      setIsLoadingPlaceDetails(false);
-                    }
-                  } else {
-                    // Handle error case
-                    if (isPoi) {
-                      setIsLoadingPoiDetails(false);
-                    } else {
-                      setIsLoadingPlaceDetails(false);
-                    }
-                  }
-                }
-              );
+      // Function to fetch place details
+      const fetchPlaceDetails = (placeId: string) => {
+        placesService.getDetails(
+          { 
+            placeId, 
+            fields: [
+              'name',
+              'formatted_address',
+              'formatted_phone_number',
+              'website',
+              'rating',
+              'reviews',
+              'photos',
+              'opening_hours',
+              'price_level',
+              'types',
+              'url'
+            ] 
+          },
+          (place, detailStatus) => {
+            if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+              if (isPoi) {
+                setPoiDetails(place);
+                setIsLoadingPoiDetails(false);
+              } else {
+                setPlaceDetails(place);
+                setIsLoadingPlaceDetails(false);
+              }
             } else {
-              // No place ID found
+              // Handle error case
               if (isPoi) {
                 setIsLoadingPoiDetails(false);
               } else {
                 setIsLoadingPlaceDetails(false);
               }
             }
-          } else {
-            // No results found
-            if (isPoi) {
-              setIsLoadingPoiDetails(false);
+          }
+        );
+      };
+
+      // Function to perform the search with different parameters
+      const searchPlace = (searchParams: google.maps.places.TextSearchRequest) => {
+        placesService.textSearch(
+          searchParams,
+          (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+              const placeId = results[0].place_id;
+              
+              if (placeId) {
+                fetchPlaceDetails(placeId);
+              } else {
+                // No place ID found
+                if (isPoi) {
+                  setIsLoadingPoiDetails(false);
+                } else {
+                  setIsLoadingPlaceDetails(false);
+                }
+              }
             } else {
-              setIsLoadingPlaceDetails(false);
+              // No results found
+              if (isPoi) {
+                setIsLoadingPoiDetails(false);
+              } else {
+                setIsLoadingPlaceDetails(false);
+              }
             }
+          }
+        );
+      };
+
+      // First try with nearbySearch using the exact coordinates and name
+      placesService.nearbySearch(
+        {
+          location: new google.maps.LatLng(location.coordinates.lat, location.coordinates.lng),
+          keyword: location.name, // Use the place name as a keyword
+          type: 'establishment',
+          rankBy: google.maps.places.RankBy.DISTANCE // Rank by distance for more accurate results
+        },
+        (results: google.maps.places.PlaceResult[] | null, status: google.maps.places.PlacesServiceStatus) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+            const placeId = results[0].place_id;
+            
+            if (placeId) {
+              fetchPlaceDetails(placeId);
+            } else {
+              // If no place ID found, try textSearch with the name and a wider radius
+              searchPlace({
+                query: location.name,
+                location: new google.maps.LatLng(location.coordinates.lat, location.coordinates.lng),
+                radius: 50000 // 50km radius for text search
+              });
+            }
+          } else {
+            // If nearbySearch fails, try textSearch with the name and a wider radius
+            searchPlace({
+              query: location.name,
+              location: new google.maps.LatLng(location.coordinates.lat, location.coordinates.lng),
+              radius: 50000 // 50km radius for text search
+            });
           }
         }
       );
