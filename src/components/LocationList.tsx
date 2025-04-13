@@ -7,7 +7,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import InfoIcon from '@mui/icons-material/Info';
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 
 interface LocationListProps {
   trip: Trip;
@@ -15,13 +15,29 @@ interface LocationListProps {
   onMapBoundsUpdate?: () => void;
 }
 
-const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListProps) => {
+export interface LocationListRef {
+  scrollToLocation: (locationId: string) => void;
+}
+
+const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onTripChange, onMapBoundsUpdate }, ref) => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const locationCardsRef = useRef<{ [key: string]: HTMLDivElement }>({});
   const isMenuOpen = Boolean(menuAnchorEl);
+
+  const scrollToLocation = (locationId: string) => {
+    const cardElement = locationCardsRef.current[locationId];
+    if (cardElement) {
+      cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    scrollToLocation
+  }));
 
   const handleAddLocation = () => {
     // Get the last location's arrival date or use today if no locations exist
@@ -574,7 +590,12 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
                   <Draggable key={location.id} draggableId={location.id} index={index}>
                     {(provided, snapshot) => (
                       <div
-                        ref={provided.innerRef}
+                        ref={(el) => {
+                          provided.innerRef(el);
+                          if (el) {
+                            locationCardsRef.current[location.id] = el;
+                          }
+                        }}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         style={{
@@ -695,6 +716,6 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       </Dialog>
     </Box>
   );
-};
+});
 
 export default LocationList; 

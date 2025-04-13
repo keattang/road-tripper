@@ -1,6 +1,6 @@
 import { Box, Paper } from '@mui/material';
 import { Trip } from '../types';
-import LocationList from './LocationList';
+import LocationList, { LocationListRef } from './LocationList';
 import TripMap, { TripMapRef } from './TripMap';
 import { useRef } from 'react';
 
@@ -11,6 +11,7 @@ interface TripPlannerProps {
 
 const TripPlanner = ({ trip, onTripChange }: TripPlannerProps) => {
   const mapRef = useRef<TripMapRef>(null);
+  const locationListRef = useRef<LocationListRef>(null);
 
   const handleMapBoundsUpdate = () => {
     console.log('TripPlanner: handleMapBoundsUpdate called');
@@ -29,6 +30,12 @@ const TripPlanner = ({ trip, onTripChange }: TripPlannerProps) => {
     });
   };
 
+  const handleMarkerClick = (locationId: string) => {
+    if (locationListRef.current) {
+      locationListRef.current.scrollToLocation(locationId);
+    }
+  };
+
   return (
     <>
       <Paper
@@ -44,6 +51,7 @@ const TripPlanner = ({ trip, onTripChange }: TripPlannerProps) => {
           trip={trip} 
           onTripChange={onTripChange} 
           onMapBoundsUpdate={handleMapBoundsUpdate}
+          ref={locationListRef}
         />
       </Paper>
       <Box sx={{ flexGrow: 1, height: '100%' }}>
@@ -51,6 +59,7 @@ const TripPlanner = ({ trip, onTripChange }: TripPlannerProps) => {
           trip={trip} 
           ref={mapRef}
           onRoutesUpdate={handleRoutesUpdate}
+          onMarkerClick={handleMarkerClick}
         />
       </Box>
     </>

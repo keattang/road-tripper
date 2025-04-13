@@ -7,6 +7,7 @@ import { Box, Typography, CircularProgress } from '@mui/material';
 interface TripMapProps {
   trip: Trip;
   onRoutesUpdate?: (routes: DrivingRoute[]) => void;
+  onMarkerClick?: (locationId: string) => void;
 }
 
 export interface TripMapRef {
@@ -24,7 +25,7 @@ const defaultCenter = {
   lng: -74.0060,
 };
 
-const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, ref) => {
+const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, onMarkerClick }, ref) => {
   const [routes, setRoutes] = useState<DrivingRoute[]>([]);
   const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
   const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
@@ -361,6 +362,11 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         loc.pointsOfInterest.some(poi => poi.id === location.id)
       );
       
+      // Call the onMarkerClick callback with the parent location ID
+      if (onMarkerClick && parentLocation) {
+        onMarkerClick(parentLocation.id);
+      }
+      
       // Calculate driving time from parent location to POI if we have both
       if (parentLocation && directionsService) {
         directionsService.route(
@@ -390,6 +396,11 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       setPoiDetails(null);
       setTempRoute(null);
       setIsLoadingPlaceDetails(true);
+      
+      // Call the onMarkerClick callback with the location ID
+      if (onMarkerClick) {
+        onMarkerClick(location.id);
+      }
     }
     
     // Get place details if we have a places service
@@ -504,7 +515,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         setIsLoadingPlaceDetails(false);
       }
     }
-  }, [placesService, trip.locations, directionsService]);
+  }, [placesService, trip.locations, directionsService, onMarkerClick]);
 
   const handleInfoWindowClose = useCallback(() => {
     setSelectedLocation(null);
