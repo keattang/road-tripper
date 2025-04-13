@@ -367,6 +367,8 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
               if (drivingTime) {
                 // Update the POI's driving time
                 (location as PointOfInterest).drivingTimeFromLocation = drivingTime;
+                // Store the parent location name for display
+                (location as PointOfInterest).parentLocationName = parentLocation.name;
                 // Store the route result to display it
                 setTempRoute(result);
               }
@@ -663,7 +665,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                 )}
                 {selectedPoi.drivingTimeFromLocation && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Driving time from location:</strong> {selectedPoi.drivingTimeFromLocation}
+                    <strong>Driving time from {selectedPoi.parentLocationName || 'location'}:</strong> {selectedPoi.drivingTimeFromLocation}
                   </Typography>
                 )}
                 {poiDetails.formatted_address && (

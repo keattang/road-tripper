@@ -215,6 +215,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
       name: '',
       coordinates: { lat: 0, lng: 0 },
       locationId: location.id,
+      parentLocationName: location.name
     };
     const updatedPOIs = [...pointsOfInterest, newPOI];
     setPointsOfInterest(updatedPOIs);
@@ -289,6 +290,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
                         lat: place.geometry!.location!.lat(),
                         lng: place.geometry!.location!.lng(),
                       },
+                      parentLocationName: location.name // Ensure parentLocationName is always set
                     }
                   : p
               );

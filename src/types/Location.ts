@@ -21,4 +21,5 @@ export interface PointOfInterest {
   };
   locationId?: string;
   drivingTimeFromLocation?: string;
+  parentLocationName?: string;
 } 
