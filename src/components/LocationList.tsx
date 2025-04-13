@@ -1,11 +1,13 @@
-import { Box, Button, Typography, IconButton, Menu, MenuItem } from '@mui/material';
+import { Box, Button, Typography, IconButton, Menu, MenuItem, Alert, Snackbar, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Trip, Location, PointOfInterest } from '../types';
 import LocationCard from './LocationCard';
 import { differenceInDays, addDays, format } from 'date-fns';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { useState } from 'react';
+import InfoIcon from '@mui/icons-material/Info';
+import { useState, useRef } from 'react';
 
 interface LocationListProps {
   trip: Trip;
@@ -15,6 +17,10 @@ interface LocationListProps {
 
 const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListProps) => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isMenuOpen = Boolean(menuAnchorEl);
 
   const handleAddLocation = () => {
@@ -226,6 +232,151 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
     setMenuAnchorEl(null);
   };
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+    handleMenuClose();
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsedData = JSON.parse(content);
+        
+        // Deserialize the data to convert date strings back to Date objects
+        const uploadedTrip = deserializeTripData(parsedData);
+        
+        // Validate the uploaded trip data
+        const validationResult = validateTripData(uploadedTrip);
+        if (validationResult.isValid) {
+          // Update the trip state with the uploaded data
+          onTripChange(uploadedTrip);
+          
+          // Trigger map bounds update to reflect the new locations
+          if (onMapBoundsUpdate) {
+            onMapBoundsUpdate();
+          }
+        } else {
+          setAlertMessage("Invalid trip data format. Please upload a valid trip file.");
+          setValidationError(validationResult.errorMessage || "Unknown validation error");
+        }
+      } catch (error) {
+        setAlertMessage("Error parsing the file. Please make sure it's a valid JSON file.");
+        setValidationError(error instanceof Error ? error.message : String(error));
+        console.error("Error parsing uploaded file:", error);
+      }
+    };
+    
+    reader.readAsText(file);
+    
+    // Reset the file input so the same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const deserializeTripData = (data: unknown): Trip => {
+    // Create a deep copy of the data
+    const tripData = JSON.parse(JSON.stringify(data));
+    
+    // Convert date strings to Date objects for each location
+    if (tripData.locations && Array.isArray(tripData.locations)) {
+      tripData.locations = tripData.locations.map((location: Record<string, unknown>) => {
+        // Convert arrivalDate string to Date object
+        if (location.arrivalDate && typeof location.arrivalDate === 'string') {
+          location.arrivalDate = new Date(location.arrivalDate);
+        }
+        
+        // Convert dates in points of interest if they exist
+        if (location.pointsOfInterest && Array.isArray(location.pointsOfInterest)) {
+          location.pointsOfInterest = location.pointsOfInterest.map((poi: Record<string, unknown>) => {
+            if (poi.arrivalDate && typeof poi.arrivalDate === 'string') {
+              poi.arrivalDate = new Date(poi.arrivalDate);
+            }
+            return poi;
+          });
+        }
+        
+        return location;
+      });
+    }
+    
+    return tripData as Trip;
+  };
+
+  const validateTripData = (data: unknown): { isValid: boolean; errorMessage?: string } => {
+    // Basic validation to ensure the data has the expected structure
+    if (!data || typeof data !== 'object') {
+      return { isValid: false, errorMessage: "The uploaded data is not a valid object." };
+    }
+    
+    const tripData = data as Record<string, unknown>;
+    
+    if (typeof tripData.name !== 'string') {
+      return { isValid: false, errorMessage: "The trip must have a name property of type string." };
+    }
+    
+    if (!Array.isArray(tripData.locations)) {
+      return { isValid: false, errorMessage: "The trip must have a locations property that is an array." };
+    }
+    
+    for (let i = 0; i < tripData.locations.length; i++) {
+      const loc = tripData.locations[i];
+      if (!loc || typeof loc !== 'object') {
+        return { isValid: false, errorMessage: `Location at index ${i} is not a valid object.` };
+      }
+      
+      const location = loc as Record<string, unknown>;
+      
+      if (typeof location.id !== 'string') {
+        return { isValid: false, errorMessage: `Location at index ${i} must have an id property of type string.` };
+      }
+      
+      if (typeof location.name !== 'string') {
+        return { isValid: false, errorMessage: `Location at index ${i} must have a name property of type string.` };
+      }
+      
+      if (!location.coordinates || typeof location.coordinates !== 'object') {
+        return { isValid: false, errorMessage: `Location at index ${i} must have a coordinates property that is an object.` };
+      }
+      
+      const coords = location.coordinates as Record<string, unknown>;
+      if (typeof coords.lat !== 'number') {
+        return { isValid: false, errorMessage: `Location at index ${i} must have coordinates.lat property of type number.` };
+      }
+      
+      if (typeof coords.lng !== 'number') {
+        return { isValid: false, errorMessage: `Location at index ${i} must have coordinates.lng property of type number.` };
+      }
+      
+      if (!(location.arrivalDate instanceof Date)) {
+        return { isValid: false, errorMessage: `Location at index ${i} must have an arrivalDate property that is a Date object.` };
+      }
+      
+      if (!Array.isArray(location.pointsOfInterest)) {
+        return { isValid: false, errorMessage: `Location at index ${i} must have a pointsOfInterest property that is an array.` };
+      }
+    }
+    
+    return { isValid: true };
+  };
+
+  const handleCloseAlert = () => {
+    setAlertMessage(null);
+  };
+
+  const handleShowErrorDetails = () => {
+    setShowErrorDialog(true);
+  };
+
+  const handleCloseErrorDialog = () => {
+    setShowErrorDialog(false);
+  };
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -263,7 +414,18 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
             <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
             Download Trip
           </MenuItem>
+          <MenuItem onClick={handleUploadClick}>
+            <UploadIcon fontSize="small" sx={{ mr: 1 }} />
+            Upload Trip
+          </MenuItem>
         </Menu>
+        <input
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+        />
       </Box>
       
       <Box sx={{ 
@@ -359,6 +521,54 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
           )}
         </Box>
       </Box>
+
+      <Snackbar 
+        open={!!alertMessage} 
+        autoHideDuration={6000} 
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseAlert} 
+          severity="error" 
+          sx={{ width: '100%' }}
+          action={
+            validationError && (
+              <IconButton
+                aria-label="more info"
+                color="inherit"
+                size="small"
+                onClick={handleShowErrorDetails}
+              >
+                <InfoIcon />
+              </IconButton>
+            )
+          }
+        >
+          {alertMessage}
+        </Alert>
+      </Snackbar>
+
+      <Dialog
+        open={showErrorDialog}
+        onClose={handleCloseErrorDialog}
+        aria-labelledby="error-dialog-title"
+        aria-describedby="error-dialog-description"
+      >
+        <DialogTitle id="error-dialog-title">
+          Validation Error Details
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="error-dialog-description">
+            {validationError}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseErrorDialog} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
