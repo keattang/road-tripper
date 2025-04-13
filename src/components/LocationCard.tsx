@@ -19,6 +19,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useJsApiLoader } from '@react-google-maps/api';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
+import { enAU } from 'date-fns/locale';
 
 interface LocationCardProps {
   location: Location;
@@ -38,6 +39,10 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
   const poiInputRefs = useRef<{ [key: string]: HTMLInputElement }>({});
   
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS);
+  
+  // Get browser locale
+  const browserLocale = navigator.language;
+  const locale = browserLocale.startsWith('en') ? enAU : undefined;
 
   // Add click outside handler
   useEffect(() => {
@@ -336,11 +341,12 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
             </IconButton>
           )}
         </Box>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={locale}>
           <DatePicker
             label="Arrival Date"
             value={location.arrivalDate}
             onChange={handleDateChange}
+            format="P"
           />
         </LocalizationProvider>
         {location.nightsStayed !== undefined && (
