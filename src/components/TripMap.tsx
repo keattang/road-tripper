@@ -304,7 +304,11 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       // Use a small delay to ensure the trip data is fully processed
       setTimeout(() => {
         fitMapToLocations();
-        calculateAllRoutes();
+        // Only recalculate routes if locations have changed
+        const locationsString = JSON.stringify(trip.locations);
+        if (locationsString !== lastCalculatedLocationsRef.current) {
+          calculateAllRoutes();
+        }
       }, 100);
     }
   }, [trip, mapInitialized, fitMapToLocations, calculateAllRoutes]);

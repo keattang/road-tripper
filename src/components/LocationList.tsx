@@ -99,12 +99,21 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       }
     });
 
+    // Check if only dates have changed
+    const hasOnlyDatesChanged = updatedLocations.every((loc, index) => {
+      const originalLoc = trip.locations[index];
+      return loc.id === originalLoc.id && 
+             loc.name === originalLoc.name &&
+             loc.coordinates.lat === originalLoc.coordinates.lat &&
+             loc.coordinates.lng === originalLoc.coordinates.lng;
+    });
+
     onTripChange({
       ...trip,
       locations: locationsWithNights,
       pointsOfInterest: allPointsOfInterest,
       totalDays,
-      routes: [], // Clear routes to force recalculation
+      routes: hasOnlyDatesChanged ? trip.routes : [], // Keep existing routes if only dates changed
     });
   };
 
