@@ -37,6 +37,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const [mapInitialized, setMapInitialized] = useState(false);
   const [isLoadingPoiDetails, setIsLoadingPoiDetails] = useState(false);
   const [isLoadingPlaceDetails, setIsLoadingPlaceDetails] = useState(false);
+  const markerRefs = useRef<{ [key: string]: google.maps.Marker }>({});
 
   // Add a ref to track if we're currently calculating routes
   const isCalculatingRef = useRef<boolean>(false);
@@ -543,6 +544,18 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       onLoad={onLoad}
       onUnmount={onUnmount}
     >
+      <style>
+        {`
+          .marker-label {
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            padding: 4px 8px !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+            white-space: nowrap !important;
+            margin-top: -8px !important;
+          }
+        `}
+      </style>
       {mapInitialized && trip.locations.map((location) => (
         <Marker
           key={location.id}
@@ -553,8 +566,26 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           icon={{
             url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
           }}
-          title={location.name}
           onClick={() => handleMarkerClick(location)}
+          onLoad={(marker: google.maps.Marker) => {
+            markerRefs.current[location.id] = marker;
+          }}
+          onMouseOver={() => {
+            const marker = markerRefs.current[location.id];
+            if (marker) {
+              marker.setLabel({
+                text: location.name,
+                color: 'white',
+                className: 'marker-label',
+              });
+            }
+          }}
+          onMouseOut={() => {
+            const marker = markerRefs.current[location.id];
+            if (marker) {
+              marker.setLabel(null);
+            }
+          }}
         />
       ))}
 
@@ -568,8 +599,26 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           icon={{
             url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
           }}
-          title={poi.name}
           onClick={() => handleMarkerClick(poi, true)}
+          onLoad={(marker: google.maps.Marker) => {
+            markerRefs.current[poi.id] = marker;
+          }}
+          onMouseOver={() => {
+            const marker = markerRefs.current[poi.id];
+            if (marker) {
+              marker.setLabel({
+                text: poi.name,
+                color: 'white',
+                className: 'marker-label',
+              });
+            }
+          }}
+          onMouseOut={() => {
+            const marker = markerRefs.current[poi.id];
+            if (marker) {
+              marker.setLabel(null);
+            }
+          }}
         />
       ))}
 
