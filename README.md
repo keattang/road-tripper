@@ -1,4 +1,9 @@
 # road-tripper
+
+This app is an experiment to see what's possible with LLM coding. It was built using Cursor and not a single line of code has been read or hand written. It was entirely created by chatting to the Cursor agent. 
+
+## Description
+
 This is a frontend application, built in React, Typescript and MUI, used to help plan and map out a road trip. It uses the Google Maps SDK to plot out the trip, calculate driving times and mark out points of interest along the way. 
 
 The basic layout of the app is:
