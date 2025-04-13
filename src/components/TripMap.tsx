@@ -45,9 +45,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const { isLoaded } = useJsApiLoader(GOOGLE_MAPS_LOADER_OPTIONS);
 
   const fitMapToLocations = useCallback(() => {
-    console.log('TripMap: fitMapToLocations called');
     if (!mapRef.current) {
-      console.log('TripMap: Cannot fit map - map not initialized');
       return;
     }
 
@@ -55,22 +53,9 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       const bounds = new google.maps.LatLngBounds();
       let hasValidCoordinates = false;
       
-      // Log the entire trip object to see what we're working with
-      console.log('Trip object in fitMapToLocations:', trip);
-      console.log('Trip locations count:', trip.locations?.length || 0);
-      console.log('Trip locations:', trip.locations);
-      
       // Add all locations to bounds
       if (trip.locations && trip.locations.length > 0) {
         trip.locations.forEach(location => {
-          console.log(`Checking location ${location.name}:`, {
-            coordinates: location.coordinates,
-            lat: location.coordinates?.lat,
-            lng: location.coordinates?.lng,
-            latType: typeof location.coordinates?.lat,
-            lngType: typeof location.coordinates?.lng
-          });
-          
           // Check if coordinates exist and are not zero
           if (location.coordinates && 
               location.coordinates.lat !== 0 && 
@@ -83,46 +68,22 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                 location.coordinates.lng >= -180 && 
                 location.coordinates.lng <= 180
               ) {
-                console.log(`Adding location ${location.name} to bounds:`, {
-                  lat: location.coordinates.lat,
-                  lng: location.coordinates.lng
-                });
                 bounds.extend({
                   lat: location.coordinates.lat,
                   lng: location.coordinates.lng
                 });
                 hasValidCoordinates = true;
-              } else {
-                console.warn('Coordinates out of valid range for location:', location.name, {
-                  lat: location.coordinates.lat,
-                  lng: location.coordinates.lng
-                });
               }
-            } catch (error) {
-              console.warn('Invalid coordinates for location:', location.name, error);
+            } catch {
+              // Invalid coordinates, skip this location
             }
-          } else {
-            console.log(`Location ${location.name} has zero or missing coordinates, skipping`);
           }
         });
-      } else {
-        console.log('No locations found in trip data');
       }
       
       // Add all points of interest to bounds
       if (trip.pointsOfInterest && trip.pointsOfInterest.length > 0) {
-        console.log('Trip POIs count:', trip.pointsOfInterest.length);
-        console.log('Trip POIs:', trip.pointsOfInterest);
-        
         trip.pointsOfInterest.forEach(poi => {
-          console.log(`Checking POI ${poi.name}:`, {
-            coordinates: poi.coordinates,
-            lat: poi.coordinates?.lat,
-            lng: poi.coordinates?.lng,
-            latType: typeof poi.coordinates?.lat,
-            lngType: typeof poi.coordinates?.lng
-          });
-          
           // Check if coordinates exist and are not zero
           if (poi.coordinates && 
               poi.coordinates.lat !== 0 && 
@@ -135,39 +96,24 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                 poi.coordinates.lng >= -180 && 
                 poi.coordinates.lng <= 180
               ) {
-                console.log(`Adding POI ${poi.name} to bounds:`, {
-                  lat: poi.coordinates.lat,
-                  lng: poi.coordinates.lng
-                });
                 bounds.extend({
                   lat: poi.coordinates.lat,
                   lng: poi.coordinates.lng
                 });
                 hasValidCoordinates = true;
-              } else {
-                console.warn('Coordinates out of valid range for POI:', poi.name, {
-                  lat: poi.coordinates.lat,
-                  lng: poi.coordinates.lng
-                });
               }
-            } catch (error) {
-              console.warn('Invalid coordinates for POI:', poi.name, error);
+            } catch {
+              // Invalid coordinates, skip this POI
             }
-          } else {
-            console.log(`POI ${poi.name} has zero or missing coordinates, skipping`);
           }
         });
-      } else {
-        console.log('No points of interest found in trip data');
       }
       
       // Only fit bounds if we have valid coordinates
       if (hasValidCoordinates) {
-        console.log('TripMap: Fitting map to bounds with valid coordinates');
         // Check if bounds are valid before fitting
         if (bounds.getNorthEast().lat() !== bounds.getSouthWest().lat() || 
             bounds.getNorthEast().lng() !== bounds.getSouthWest().lng()) {
-          console.log('Bounds are valid, fitting map');
           mapRef.current.fitBounds(bounds);
           
           // Add some padding to the bounds
@@ -181,7 +127,6 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
             google.maps.event.removeListener(listener);
           });
         } else {
-          console.log('Bounds are invalid (same point), trying to center on first valid location');
           // If bounds are invalid (same point), just center on the first valid location
           const firstValidLocation = trip.locations.find(loc => 
             loc.coordinates && 
@@ -194,21 +139,16 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
           );
           
           if (firstValidLocation) {
-            console.log('TripMap: Centering map on first valid location:', firstValidLocation.name);
             mapRef.current.setCenter({
               lat: firstValidLocation.coordinates.lat,
               lng: firstValidLocation.coordinates.lng
             });
             mapRef.current.setZoom(12);
-          } else {
-            console.log('No valid locations found to center on');
           }
         }
-      } else {
-        console.log('TripMap: No valid coordinates found to fit map');
       }
-    } catch (error) {
-      console.error('Error fitting map bounds:', error);
+    } catch {
+      // Error fitting map bounds
     }
   }, [trip]);
 
