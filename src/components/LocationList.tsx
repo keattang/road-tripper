@@ -239,7 +239,7 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
                           {index < trip.locations.length - 1 && (
                             <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">
                               <Typography variant="body2" color="primary">
-                                Driving time: {trip.routes?.[index]?.drivingTime || 'N/A'}
+                                Driving time: {trip.routes?.[index]?.drivingTime || 'Calculating...'}
                               </Typography>
                             </Box>
                           )}
