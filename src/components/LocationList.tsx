@@ -525,7 +525,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
       position: 'relative',
     }}>
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
+        <Typography variant="h5">
           {trip.name}
         </Typography>
         <IconButton
