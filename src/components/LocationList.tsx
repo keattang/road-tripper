@@ -1,8 +1,11 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, Typography, IconButton, Menu, MenuItem } from '@mui/material';
 import { Trip, Location, PointOfInterest } from '../types';
 import LocationCard from './LocationCard';
 import { differenceInDays, addDays, format } from 'date-fns';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import DownloadIcon from '@mui/icons-material/Download';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { useState } from 'react';
 
 interface LocationListProps {
   trip: Trip;
@@ -11,6 +14,9 @@ interface LocationListProps {
 }
 
 const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListProps) => {
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const isMenuOpen = Boolean(menuAnchorEl);
+
   const handleAddLocation = () => {
     // Get the last location's arrival date or use today if no locations exist
     const lastLocation = trip.locations[trip.locations.length - 1];
@@ -186,6 +192,40 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
     });
   };
 
+  const handleDownloadTrip = () => {
+    // Create a JSON string from the trip data
+    const tripData = JSON.stringify(trip, null, 2);
+    
+    // Create a Blob with the JSON data
+    const blob = new Blob([tripData], { type: 'application/json' });
+    
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary anchor element
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${trip.name.replace(/\s+/g, '_')}_trip.json`;
+    
+    // Append to the document, click it, and remove it
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -193,10 +233,37 @@ const LocationList = ({ trip, onTripChange, onMapBoundsUpdate }: LocationListPro
       height: '100%',
       position: 'relative',
     }}>
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h5" sx={{ mb: 2 }}>
           {trip.name}
         </Typography>
+        <IconButton
+          aria-label="more options"
+          aria-controls={isMenuOpen ? 'trip-menu' : undefined}
+          aria-haspopup="true"
+          aria-expanded={isMenuOpen ? 'true' : undefined}
+          onClick={handleMenuOpen}
+          size="small"
+        >
+          <MoreVertIcon />
+        </IconButton>
+        <Menu
+          id="trip-menu"
+          anchorEl={menuAnchorEl}
+          open={isMenuOpen}
+          onClose={handleMenuClose}
+          MenuListProps={{
+            'aria-labelledby': 'trip-menu-button',
+          }}
+        >
+          <MenuItem onClick={() => {
+            handleDownloadTrip();
+            handleMenuClose();
+          }}>
+            <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
+            Download Trip
+          </MenuItem>
+        </Menu>
       </Box>
       
       <Box sx={{ 
