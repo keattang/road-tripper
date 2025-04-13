@@ -2,7 +2,7 @@ import { useCallback, useState, useRef, forwardRef, useImperativeHandle, useEffe
 import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindowF } from '@react-google-maps/api';
 import { Trip, Location, DrivingRoute, PointOfInterest } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, CircularProgress } from '@mui/material';
 
 interface TripMapProps {
   trip: Trip;
@@ -35,6 +35,8 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
   const [poiDetails, setPoiDetails] = useState<google.maps.places.PlaceResult | null>(null);
   const [tempRoute, setTempRoute] = useState<google.maps.DirectionsResult | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [isLoadingPoiDetails, setIsLoadingPoiDetails] = useState(false);
+  const [isLoadingPlaceDetails, setIsLoadingPlaceDetails] = useState(false);
 
   // Add a ref to track if we're currently calculating routes
   const isCalculatingRef = useRef<boolean>(false);
@@ -347,6 +349,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       setSelectedPoi(location as PointOfInterest);
       setSelectedLocation(null);
       setPlaceDetails(null);
+      setIsLoadingPoiDetails(true);
       
       // Find the parent location for this POI
       const parentLocation = trip.locations.find(loc => 
@@ -381,6 +384,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
       setSelectedPoi(null);
       setPoiDetails(null);
       setTempRoute(null);
+      setIsLoadingPlaceDetails(true);
     }
     
     // Get place details if we have a places service
@@ -418,16 +422,46 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                   if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place) {
                     if (isPoi) {
                       setPoiDetails(place);
+                      setIsLoadingPoiDetails(false);
                     } else {
                       setPlaceDetails(place);
+                      setIsLoadingPlaceDetails(false);
+                    }
+                  } else {
+                    // Handle error case
+                    if (isPoi) {
+                      setIsLoadingPoiDetails(false);
+                    } else {
+                      setIsLoadingPlaceDetails(false);
                     }
                   }
                 }
               );
+            } else {
+              // No place ID found
+              if (isPoi) {
+                setIsLoadingPoiDetails(false);
+              } else {
+                setIsLoadingPlaceDetails(false);
+              }
+            }
+          } else {
+            // No results found
+            if (isPoi) {
+              setIsLoadingPoiDetails(false);
+            } else {
+              setIsLoadingPlaceDetails(false);
             }
           }
         }
       );
+    } else {
+      // No places service or invalid coordinates
+      if (isPoi) {
+        setIsLoadingPoiDetails(false);
+      } else {
+        setIsLoadingPlaceDetails(false);
+      }
     }
   }, [placesService, trip.locations, directionsService]);
 
@@ -437,6 +471,8 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
     setPlaceDetails(null);
     setPoiDetails(null);
     setTempRoute(null);
+    setIsLoadingPoiDetails(false);
+    setIsLoadingPlaceDetails(false);
   }, []);
 
   // Add keyboard event handler for Escape key
@@ -546,7 +582,12 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         >
           <Box sx={{ maxWidth: 300, padding: 1 }}>
             <Typography variant="h6" sx={{ mb: 1 }}>{selectedLocation.name}</Typography>
-            {placeDetails && (
+            {isLoadingPlaceDetails ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" sx={{ ml: 1 }}>Loading details...</Typography>
+              </Box>
+            ) : placeDetails ? (
               <>
                 {placeDetails.photos && placeDetails.photos.length > 0 && (
                   <Box sx={{ mb: 1 }}>
@@ -637,7 +678,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                   </>
                 )}
               </>
-            )}
+            ) : null}
           </Box>
         </InfoWindowF>
       )}
@@ -652,7 +693,12 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
         >
           <Box sx={{ maxWidth: 300, padding: 1 }}>
             <Typography variant="h6" sx={{ mb: 1 }}>{selectedPoi.name}</Typography>
-            {poiDetails && (
+            {isLoadingPoiDetails ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" sx={{ ml: 1 }}>Loading details...</Typography>
+              </Box>
+            ) : poiDetails ? (
               <>
                 {poiDetails.photos && poiDetails.photos.length > 0 && (
                   <Box sx={{ mb: 1 }}>
@@ -710,7 +756,7 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate }, 
                   </Typography>
                 )}
               </>
-            )}
+            ) : null}
           </Box>
         </InfoWindowF>
       )}
