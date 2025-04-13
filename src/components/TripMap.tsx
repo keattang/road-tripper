@@ -3,6 +3,7 @@ import { GoogleMap, useJsApiLoader, Marker, Polyline, InfoWindowF } from '@react
 import { Trip, Location, DrivingRoute, PointOfInterest } from '../types';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
 import { Box, Typography, CircularProgress } from '@mui/material';
+import { differenceInDays } from 'date-fns';
 
 interface TripMapProps {
   trip: Trip;
@@ -747,8 +748,8 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
                 {selectedLocation.arrivalDate && (
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Arrival:</strong> {selectedLocation.arrivalDate.toLocaleDateString()}
-                    {selectedLocation.nightsStayed !== undefined && (
-                      <span> • {selectedLocation.nightsStayed} night{selectedLocation.nightsStayed !== 1 ? 's' : ''}</span>
+                    {trip.locations.length > 1 && trip.locations.indexOf(selectedLocation) < trip.locations.length - 1 && (
+                      <span> • {differenceInDays(trip.locations[trip.locations.indexOf(selectedLocation) + 1].arrivalDate, selectedLocation.arrivalDate)} night{differenceInDays(trip.locations[trip.locations.indexOf(selectedLocation) + 1].arrivalDate, selectedLocation.arrivalDate) !== 1 ? 's' : ''}</span>
                     )}
                   </Typography>
                 )}

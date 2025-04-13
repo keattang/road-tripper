@@ -20,15 +20,17 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useJsApiLoader } from '@react-google-maps/api';
 import { GOOGLE_MAPS_LOADER_OPTIONS } from '../utils/googleMapsLoader';
 import { enAU } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
 
 interface LocationCardProps {
   location: Location;
   onLocationChange: (location: Location) => void;
   onMapBoundsUpdate?: () => void;
   onDelete?: () => void;
+  nextLocationArrivalDate?: Date;
 }
 
-const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete }: LocationCardProps) => {
+const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete, nextLocationArrivalDate }: LocationCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>(location.pointsOfInterest || []);
   const [locationInputValue, setLocationInputValue] = useState(location.name);
@@ -311,6 +313,12 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
     }
   };
 
+  // Calculate nights stayed on the fly
+  const calculateNightsStayed = () => {
+    if (!nextLocationArrivalDate) return undefined;
+    return differenceInDays(nextLocationArrivalDate, location.arrivalDate);
+  };
+
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
@@ -343,9 +351,9 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
             format="P"
           />
         </LocalizationProvider>
-        {location.nightsStayed !== undefined && (
+        {nextLocationArrivalDate && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Nights stayed: {location.nightsStayed}
+            Nights stayed: {calculateNightsStayed()}
           </Typography>
         )}
       </CardContent>

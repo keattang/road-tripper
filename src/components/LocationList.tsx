@@ -69,24 +69,17 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
       loc.id === updatedLocation.id ? updatedLocation : loc
     );
 
-    // Calculate nights stayed for each location
-    const locationsWithNights = updatedLocations.map((loc, index) => {
-      if (index === updatedLocations.length - 1) return loc;
+    // Calculate total days based on arrival dates
+    const totalDays = updatedLocations.reduce((total, loc, index) => {
+      if (index === updatedLocations.length - 1) return total;
       
       const nextLocation = updatedLocations[index + 1];
       const nightsStayed = differenceInDays(
         nextLocation.arrivalDate,
         loc.arrivalDate
       );
-
-      return {
-        ...loc,
-        nightsStayed,
-      };
-    });
-
-    const totalDays = locationsWithNights.reduce((total, loc) => {
-      return total + (loc.nightsStayed || 0);
+      
+      return total + nightsStayed;
     }, 0);
 
     // Collect all points of interest from all locations
@@ -103,7 +96,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
     }
     
     // Then add POIs from other locations
-    locationsWithNights.forEach(location => {
+    updatedLocations.forEach(location => {
       if (location.id !== updatedLocation.id) {
         location.pointsOfInterest.forEach(poi => {
           // Add locationId to each POI if not already set
@@ -126,7 +119,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
 
     onTripChange({
       ...trip,
-      locations: locationsWithNights,
+      locations: updatedLocations,
       pointsOfInterest: allPointsOfInterest,
       totalDays,
       routes: hasOnlyDatesChanged ? trip.routes : [], // Keep existing routes if only dates changed
@@ -136,29 +129,22 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
   const handleDeleteLocation = (locationId: string) => {
     const updatedLocations = trip.locations.filter(loc => loc.id !== locationId);
     
-    // Calculate nights stayed for each location
-    const locationsWithNights = updatedLocations.map((loc, index) => {
-      if (index === updatedLocations.length - 1) return loc;
+    // Calculate total days based on arrival dates
+    const totalDays = updatedLocations.reduce((total, loc, index) => {
+      if (index === updatedLocations.length - 1) return total;
       
       const nextLocation = updatedLocations[index + 1];
       const nightsStayed = differenceInDays(
         nextLocation.arrivalDate,
         loc.arrivalDate
       );
-
-      return {
-        ...loc,
-        nightsStayed,
-      };
-    });
-
-    const totalDays = locationsWithNights.reduce((total, loc) => {
-      return total + (loc.nightsStayed || 0);
+      
+      return total + nightsStayed;
     }, 0);
 
     // Collect all points of interest from remaining locations
     const allPointsOfInterest: PointOfInterest[] = [];
-    locationsWithNights.forEach(location => {
+    updatedLocations.forEach(location => {
       location.pointsOfInterest.forEach(poi => {
         if (!poi.locationId) {
           poi.locationId = location.id;
@@ -169,7 +155,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
 
     onTripChange({
       ...trip,
-      locations: locationsWithNights,
+      locations: updatedLocations,
       pointsOfInterest: allPointsOfInterest,
       totalDays,
       routes: [], // Clear routes to force recalculation
@@ -183,29 +169,22 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // Calculate nights stayed for each location
-    const locationsWithNights = items.map((loc, index) => {
-      if (index === items.length - 1) return loc;
+    // Calculate total days based on arrival dates
+    const totalDays = items.reduce((total, loc, index) => {
+      if (index === items.length - 1) return total;
       
       const nextLocation = items[index + 1];
       const nightsStayed = differenceInDays(
         nextLocation.arrivalDate,
         loc.arrivalDate
       );
-
-      return {
-        ...loc,
-        nightsStayed,
-      };
-    });
-
-    const totalDays = locationsWithNights.reduce((total, loc) => {
-      return total + (loc.nightsStayed || 0);
+      
+      return total + nightsStayed;
     }, 0);
 
     // Collect all points of interest from all locations
     const allPointsOfInterest: PointOfInterest[] = [];
-    locationsWithNights.forEach(location => {
+    items.forEach(location => {
       location.pointsOfInterest.forEach(poi => {
         if (!poi.locationId) {
           poi.locationId = location.id;
@@ -216,7 +195,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
 
     onTripChange({
       ...trip,
-      locations: locationsWithNights,
+      locations: items,
       pointsOfInterest: allPointsOfInterest,
       totalDays,
       routes: [], // Clear routes to force recalculation
@@ -348,6 +327,11 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
         } else {
           console.warn('Missing coordinates for location:', location.name);
           // Don't add default coordinates, just log the warning
+        }
+        
+        // Remove nightsStayed property if it exists
+        if ('nightsStayed' in location) {
+          delete location.nightsStayed;
         }
         
         // Convert dates in points of interest if they exist
@@ -609,6 +593,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
                             onLocationChange={handleLocationChange}
                             onMapBoundsUpdate={onMapBoundsUpdate}
                             onDelete={() => handleDeleteLocation(location.id)}
+                            nextLocationArrivalDate={index < trip.locations.length - 1 ? trip.locations[index + 1].arrivalDate : undefined}
                           />
                           {index < trip.locations.length - 1 && (
                             <Box sx={{ my: 1, textAlign: 'center' }} data-testid="driving-time-section">

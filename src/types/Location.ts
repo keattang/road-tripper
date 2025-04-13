@@ -8,8 +8,6 @@ export interface Location {
   arrivalDate: Date;
   departureDate?: Date;
   pointsOfInterest: PointOfInterest[];
-  nightsStayed?: number;
-  drivingTime?: string;
 }
 
 export interface PointOfInterest {
