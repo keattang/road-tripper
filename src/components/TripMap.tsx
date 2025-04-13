@@ -154,9 +154,43 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
     // Skip if we're already calculating
     if (isCalculatingRef.current) return;
     
-    // Skip if locations haven't changed since last calculation AND routes exist
-    const locationsString = JSON.stringify(trip.locations);
-    if (locationsString === lastCalculatedLocationsRef.current && trip.routes && trip.routes.length > 0) return;
+    // Check if coordinates have changed since last calculation
+    let shouldCalculate = false;
+    
+    try {
+      // If we don't have previous data or routes don't exist, we need to calculate
+      if (!lastCalculatedLocationsRef.current || !trip.routes || trip.routes.length === 0) {
+        shouldCalculate = true;
+      } else {
+        // Try to parse the previous locations data
+        const prevLocations = JSON.parse(lastCalculatedLocationsRef.current);
+        
+        // Check if the number of locations has changed
+        if (prevLocations.length !== trip.locations.length) {
+          shouldCalculate = true;
+        } else {
+          // Check if any coordinates have changed
+          shouldCalculate = trip.locations.some((location, index) => {
+            const prevLocation = prevLocations[index];
+            
+            // Check if coordinates have changed
+            return !prevLocation || 
+                   location.coordinates.lat !== prevLocation.coordinates.lat || 
+                   location.coordinates.lng !== prevLocation.coordinates.lng;
+          });
+        }
+      }
+    } catch (error) {
+      // If there's an error parsing the previous data, we need to calculate
+      console.warn('Error parsing previous locations data in calculateAllRoutes:', error);
+      shouldCalculate = true;
+    }
+    
+    // Skip if coordinates haven't changed
+    if (!shouldCalculate) {
+      console.log('TripMap: No coordinate changes detected, skipping route calculation');
+      return;
+    }
     
     // Set calculating flag
     isCalculatingRef.current = true;
@@ -213,8 +247,12 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
         }
       }
       
-      // Update the last calculated locations
-      lastCalculatedLocationsRef.current = locationsString;
+      // Update the last calculated locations with just the coordinates
+      const coordinatesData = trip.locations.map(loc => ({
+        id: loc.id,
+        coordinates: loc.coordinates
+      }));
+      lastCalculatedLocationsRef.current = JSON.stringify(coordinatesData);
     } catch (error) {
       console.error('Error in route calculation:', error);
     } finally {
@@ -232,18 +270,56 @@ const TripMap = forwardRef<TripMapRef, TripMapProps>(({ trip, onRoutesUpdate, on
   // Add an effect to handle trip data changes
   useEffect(() => {
     console.log('TripMap: Trip data changed, updating map');
-    console.log('Trip data:', trip);
     
-    // If the map is initialized, fit it to the locations
+    // If the map is initialized, check if locations have changed
     if (mapInitialized && mapRef.current) {
-      console.log('TripMap: Map is initialized, fitting to locations');
       // Use a small delay to ensure the trip data is fully processed
       setTimeout(() => {
-        fitMapToLocations();
-        // Only recalculate routes if locations have changed
-        const locationsString = JSON.stringify(trip.locations);
-        if (locationsString !== lastCalculatedLocationsRef.current) {
+        // Check if any location coordinates have changed
+        let hasCoordinatesChanged = false;
+        
+        try {
+          // If we don't have previous data, we need to update
+          if (!lastCalculatedLocationsRef.current) {
+            hasCoordinatesChanged = true;
+          } else {
+            // Try to parse the previous locations data
+            const prevLocations = JSON.parse(lastCalculatedLocationsRef.current);
+            
+            // Check if the number of locations has changed
+            if (prevLocations.length !== trip.locations.length) {
+              hasCoordinatesChanged = true;
+            } else {
+              // Check if any coordinates have changed
+              hasCoordinatesChanged = trip.locations.some((location, index) => {
+                const prevLocation = prevLocations[index];
+                
+                // Check if coordinates have changed
+                return !prevLocation || 
+                       location.coordinates.lat !== prevLocation.coordinates.lat || 
+                       location.coordinates.lng !== prevLocation.coordinates.lng;
+              });
+            }
+          }
+        } catch (error) {
+          // If there's an error parsing the previous data, we need to update
+          console.warn('Error parsing previous locations data:', error);
+          hasCoordinatesChanged = true;
+        }
+        
+        if (hasCoordinatesChanged) {
+          console.log('TripMap: Location coordinates have changed, fitting map to locations');
+          fitMapToLocations();
           calculateAllRoutes();
+          
+          // Update the last calculated locations with just the coordinates
+          const coordinatesData = trip.locations.map(loc => ({
+            id: loc.id,
+            coordinates: loc.coordinates
+          }));
+          lastCalculatedLocationsRef.current = JSON.stringify(coordinatesData);
+        } else {
+          console.log('TripMap: No coordinate changes detected, skipping map fit');
         }
       }, 100);
     }

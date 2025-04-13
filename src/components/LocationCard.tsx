@@ -176,12 +176,6 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
             ...location,
             pointsOfInterest: updatedPOIs,
           });
-
-          if (onMapBoundsUpdate) {
-            setTimeout(() => {
-              onMapBoundsUpdate();
-            }, 100);
-          }
         }
       });
 
