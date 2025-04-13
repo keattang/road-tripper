@@ -354,7 +354,7 @@ const LocationCard = ({ location, onLocationChange, onMapBoundsUpdate, onDelete 
           {expanded ? <ExpandLess /> : <ExpandMore />}
         </IconButton>
         <Typography variant="body2" color="text.secondary">
-          Points of Interest
+          Things to see and do ({location.pointsOfInterest.length})
         </Typography>
       </CardActions>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
