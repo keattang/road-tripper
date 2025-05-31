@@ -7,6 +7,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import InfoIcon from '@mui/icons-material/Info';
+import PrintIcon from '@mui/icons-material/Print';
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 
 interface LocationListProps {
@@ -501,6 +502,78 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
     setShowErrorDialog(false);
   };
 
+  const handlePrintTrip = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setAlertMessage("Please allow pop-ups to print the trip details.");
+      return;
+    }
+
+    const formatDate = (date: Date) => format(date, 'MMMM d, yyyy');
+    const formatTime = (time: string) => time; // Since drivingTimeFromLocation is already formatted
+
+    const printContent = `
+      <html>
+        <head>
+          <title>${trip.name} - Trip Details</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #1976d2; }
+            .location { margin-bottom: 30px; }
+            .location h2 { color: #2196f3; margin-bottom: 10px; }
+            .poi { margin-left: 20px; margin-bottom: 10px; }
+            .driving-time { color: #666; margin: 20px 0; }
+            .nights { color: #666; margin-bottom: 10px; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${trip.name}</h1>
+          ${trip.locations.map((location, index) => {
+            const nextLocation = trip.locations[index + 1];
+            const nightsStayed = nextLocation 
+              ? differenceInDays(nextLocation.arrivalDate, location.arrivalDate)
+              : null;
+            const drivingTime = trip.routes?.[index]?.drivingTime;
+            
+            return `
+              <div class="location">
+                <h2>${location.name}</h2>
+                <div class="nights">Arrival: ${formatDate(location.arrivalDate)}</div>
+                ${nightsStayed !== null ? `<div class="nights">Nights stayed: ${nightsStayed}</div>` : ''}
+                
+                ${location.pointsOfInterest.length > 0 ? `
+                  <h3>Things to do:</h3>
+                  ${location.pointsOfInterest.map(poi => `
+                    <div class="poi">
+                      • ${poi.name}
+                      ${poi.drivingTimeFromLocation ? ` (${poi.drivingTimeFromLocation} from location)` : ''}
+                    </div>
+                  `).join('')}
+                ` : ''}
+                
+                ${drivingTime ? `
+                  <div class="driving-time">
+                    Driving time to next location: ${drivingTime}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+          <div class="no-print">
+            <button onclick="window.print()">Print</button>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+  };
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -541,6 +614,13 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
           <MenuItem onClick={handleUploadClick}>
             <UploadIcon fontSize="small" sx={{ mr: 1 }} />
             Upload Trip
+          </MenuItem>
+          <MenuItem onClick={() => {
+            handlePrintTrip();
+            handleMenuClose();
+          }}>
+            <PrintIcon fontSize="small" sx={{ mr: 1 }} />
+            Print Trip
           </MenuItem>
         </Menu>
         <input
