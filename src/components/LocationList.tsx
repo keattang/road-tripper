@@ -522,7 +522,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
             .location { margin-bottom: 30px; }
             .location h2 { color: #2196f3; margin-bottom: 10px; }
             .poi { margin-left: 20px; margin-bottom: 10px; }
-            .driving-time { color: #666; margin: 20px 0; }
+            .driving-time { color: #666; margin-bottom: 10px; }
             .nights { color: #666; margin-bottom: 10px; }
             @media print {
               body { padding: 0; }
@@ -537,11 +537,16 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
             const nightsStayed = nextLocation 
               ? differenceInDays(nextLocation.arrivalDate, location.arrivalDate)
               : null;
-            const drivingTime = trip.routes?.[index]?.drivingTime;
+            const drivingTime = index > 0 ? trip.routes?.[index - 1]?.drivingTime : null;
             
             return `
               <div class="location">
                 <h2>${location.name}</h2>
+                ${drivingTime ? `
+                  <div class="driving-time">
+                    Driving time to this location: ${drivingTime}
+                  </div>
+                ` : ''}
                 <div class="nights">Arrival: ${formatDate(location.arrivalDate)}</div>
                 ${nightsStayed !== null ? `<div class="nights">Nights stayed: ${nightsStayed}</div>` : ''}
                 
@@ -553,12 +558,6 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
                       ${poi.drivingTimeFromLocation ? ` (${poi.drivingTimeFromLocation} from location)` : ''}
                     </div>
                   `).join('')}
-                ` : ''}
-                
-                ${drivingTime ? `
-                  <div class="driving-time">
-                    Driving time to next location: ${drivingTime}
-                  </div>
                 ` : ''}
               </div>
             `;
