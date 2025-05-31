@@ -563,7 +563,6 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
     );
 
     const formatDate = (date: Date) => format(date, 'MMMM d, yyyy');
-    const formatTime = (time: string) => time;
 
     const printContent = `
       <html>
