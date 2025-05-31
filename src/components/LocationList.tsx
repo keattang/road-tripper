@@ -502,15 +502,66 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
     setShowErrorDialog(false);
   };
 
-  const handlePrintTrip = () => {
+  const handlePrintTrip = async () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       setAlertMessage("Please allow pop-ups to print the trip details.");
       return;
     }
 
+    // Create a new DirectionsService instance
+    const directionsService = new google.maps.DirectionsService();
+
+    // Function to calculate driving time between two points
+    const calculateDrivingTime = async (origin: { lat: number; lng: number }, destination: { lat: number; lng: number }): Promise<string> => {
+      return new Promise((resolve) => {
+        directionsService.route(
+          {
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK && result) {
+              resolve(result.routes[0].legs[0].duration?.text || 'Unknown');
+            } else {
+              resolve('Unknown');
+            }
+          }
+        );
+      });
+    };
+
+    // Calculate driving times for all POIs
+    const locationsWithDrivingTimes = await Promise.all(
+      trip.locations.map(async (location) => {
+        const poisWithDrivingTimes = await Promise.all(
+          location.pointsOfInterest
+            .filter(poi => poi.name.trim() !== '')
+            .map(async (poi) => {
+              if (!poi.drivingTimeFromLocation && poi.coordinates) {
+                const drivingTime = await calculateDrivingTime(
+                  location.coordinates,
+                  poi.coordinates
+                );
+                return {
+                  ...poi,
+                  drivingTimeFromLocation: drivingTime
+                };
+              }
+              return poi;
+            })
+        );
+
+        return {
+          ...location,
+          pointsOfInterest: poisWithDrivingTimes
+        };
+      })
+    );
+
     const formatDate = (date: Date) => format(date, 'MMMM d, yyyy');
-    const formatTime = (time: string) => time; // Since drivingTimeFromLocation is already formatted
+    const formatTime = (time: string) => time;
 
     const printContent = `
       <html>
@@ -532,8 +583,8 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
         </head>
         <body>
           <h1>${trip.name}</h1>
-          ${trip.locations.map((location, index) => {
-            const nextLocation = trip.locations[index + 1];
+          ${locationsWithDrivingTimes.map((location, index) => {
+            const nextLocation = locationsWithDrivingTimes[index + 1];
             const nightsStayed = nextLocation 
               ? differenceInDays(nextLocation.arrivalDate, location.arrivalDate)
               : null;
