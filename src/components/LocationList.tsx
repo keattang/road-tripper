@@ -8,6 +8,7 @@ import UploadIcon from '@mui/icons-material/Upload';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import InfoIcon from '@mui/icons-material/Info';
 import PrintIcon from '@mui/icons-material/Print';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 
 interface LocationListProps {
@@ -25,6 +26,7 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [showStatsDialog, setShowStatsDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationCardsRef = useRef<{ [key: string]: HTMLDivElement }>({});
   const isMenuOpen = Boolean(menuAnchorEl);
@@ -627,6 +629,74 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
     printWindow.document.close();
   };
 
+  const calculateTripStats = () => {
+    if (!trip.routes || trip.routes.length === 0) {
+      return {
+        totalDrivingTime: '0 min',
+        totalDistance: '0 km',
+        averageDrivingTime: '0 min',
+        averageDistance: '0 km',
+        totalLocations: trip.locations.length,
+        totalPOIs: trip.pointsOfInterest.length,
+        totalNights: trip.totalDays
+      };
+    }
+
+    // Parse driving times and distances
+    const drivingTimes = trip.routes.map(route => {
+      const timeStr = route.drivingTime;
+      const hours = timeStr.match(/(\d+)\s*h/)?.[1] || '0';
+      const minutes = timeStr.match(/(\d+)\s*m/)?.[1] || '0';
+      return parseInt(hours) * 60 + parseInt(minutes);
+    });
+
+    const distances = trip.routes.map(route => {
+      const distanceStr = route.distance;
+      const km = distanceStr.match(/(\d+(?:\.\d+)?)\s*km/)?.[1] || '0';
+      return parseFloat(km);
+    });
+
+    // Calculate totals
+    const totalMinutes = drivingTimes.reduce((sum, minutes) => sum + minutes, 0);
+    const totalKm = distances.reduce((sum, km) => sum + km, 0);
+
+    // Format total driving time
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const totalDrivingTime = hours > 0 
+      ? `${hours}h ${minutes}m`
+      : `${minutes}m`;
+
+    // Calculate averages
+    const averageMinutes = Math.round(totalMinutes / trip.routes.length);
+    const averageHours = Math.floor(averageMinutes / 60);
+    const averageMinutesRemainder = averageMinutes % 60;
+    const averageDrivingTime = averageHours > 0
+      ? `${averageHours}h ${averageMinutesRemainder}m`
+      : `${averageMinutesRemainder}m`;
+
+    const averageDistance = (totalKm / trip.routes.length).toFixed(1);
+
+    return {
+      totalDrivingTime,
+      totalDistance: `${totalKm.toFixed(1)} km`,
+      averageDrivingTime,
+      averageDistance: `${averageDistance} km`,
+      totalLocations: trip.locations.length,
+      totalPOIs: trip.pointsOfInterest.length,
+      totalNights: trip.totalDays
+    };
+  };
+
+  const handleShowStats = () => {
+    setShowStatsDialog(true);
+    handleMenuClose();
+  };
+
+  const handleCloseStats = () => {
+    setShowStatsDialog(false);
+  };
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -674,6 +744,10 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
           }}>
             <PrintIcon fontSize="small" sx={{ mr: 1 }} />
             Print Trip
+          </MenuItem>
+          <MenuItem onClick={handleShowStats}>
+            <BarChartIcon fontSize="small" sx={{ mr: 1 }} />
+            Trip Statistics
           </MenuItem>
         </Menu>
         <input
@@ -828,6 +902,55 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseErrorDialog} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={showStatsDialog}
+        onClose={handleCloseStats}
+        aria-labelledby="stats-dialog-title"
+        aria-describedby="stats-dialog-description"
+      >
+        <DialogTitle id="stats-dialog-title">
+          Trip Statistics
+        </DialogTitle>
+        <DialogContent>
+          {(() => {
+            const stats = calculateTripStats();
+            return (
+              <Box sx={{ pt: 1 }}>
+                <Typography variant="h6" gutterBottom>Overview</Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Total Locations: {stats.totalLocations}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Total Points of Interest: {stats.totalPOIs}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Total Nights: {stats.totalNights}
+                </Typography>
+
+                <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Driving</Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Total Driving Time: {stats.totalDrivingTime}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Total Distance: {stats.totalDistance}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Average Driving Time: {stats.averageDrivingTime}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  • Average Distance: {stats.averageDistance}
+                </Typography>
+              </Box>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseStats} color="primary">
             Close
           </Button>
         </DialogActions>
