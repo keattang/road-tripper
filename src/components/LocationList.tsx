@@ -539,6 +539,9 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
               : null;
             const drivingTime = index > 0 ? trip.routes?.[index - 1]?.drivingTime : null;
             
+            // Filter out empty points of interest
+            const validPointsOfInterest = location.pointsOfInterest.filter(poi => poi.name.trim() !== '');
+            
             return `
               <div class="location">
                 <h2>${location.name}</h2>
@@ -550,9 +553,9 @@ const LocationList = forwardRef<LocationListRef, LocationListProps>(({ trip, onT
                 <div class="nights">Arrival: ${formatDate(location.arrivalDate)}</div>
                 ${nightsStayed !== null ? `<div class="nights">Nights stayed: ${nightsStayed}</div>` : ''}
                 
-                ${location.pointsOfInterest.length > 0 ? `
+                ${validPointsOfInterest.length > 0 ? `
                   <h3>Things to do:</h3>
-                  ${location.pointsOfInterest.map(poi => `
+                  ${validPointsOfInterest.map(poi => `
                     <div class="poi">
                       • ${poi.name}
                       ${poi.drivingTimeFromLocation ? ` (${poi.drivingTimeFromLocation} from location)` : ''}
